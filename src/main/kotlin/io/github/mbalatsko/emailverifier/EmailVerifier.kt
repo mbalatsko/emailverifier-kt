@@ -6,10 +6,11 @@ import io.github.mbalatsko.emailverifier.components.checkers.GoogleDoHLookupBack
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.providers.OnlineLFDomainsProvider
-import java.net.IDN
 
 enum class CheckResult {
-    PASSED, FAILED, SKIPPED
+    PASSED,
+    FAILED,
+    SKIPPED,
 }
 
 /**
@@ -26,16 +27,16 @@ data class EmailValidationResult(
     val syntaxCheck: CheckResult,
     val registrabilityCheck: CheckResult = CheckResult.SKIPPED,
     val mxRecordCheck: CheckResult = CheckResult.SKIPPED,
-    val disposabilityCheck: CheckResult = CheckResult.SKIPPED
+    val disposabilityCheck: CheckResult = CheckResult.SKIPPED,
 ) {
     /**
      * Returns true if all checks either passed or were skipped.
      */
     fun ok(): Boolean =
         syntaxCheck != CheckResult.FAILED &&
-                registrabilityCheck != CheckResult.FAILED &&
-                mxRecordCheck != CheckResult.FAILED &&
-                disposabilityCheck != CheckResult.FAILED
+            registrabilityCheck != CheckResult.FAILED &&
+            mxRecordCheck != CheckResult.FAILED &&
+            disposabilityCheck != CheckResult.FAILED
 }
 
 /**
@@ -50,7 +51,7 @@ class EmailVerifier(
     private val emailSyntaxChecker: EmailSyntaxChecker,
     private val pslIndex: PslIndex?,
     private val mxRecordChecker: MxRecordChecker?,
-    private val disposableEmailChecker: DisposableEmailChecker?
+    private val disposableEmailChecker: DisposableEmailChecker?,
 ) {
     /**
      * Validates the given email address using configured checks.
@@ -65,7 +66,7 @@ class EmailVerifier(
             } catch (_: IllegalArgumentException) {
                 return EmailValidationResult(
                     email,
-                    CheckResult.FAILED
+                    CheckResult.FAILED,
                 )
             }
 
@@ -78,7 +79,8 @@ class EmailVerifier(
         val registrabilityCheck =
             if (pslIndex != null &&
                 isHostnameValid &&
-                pslIndex.isHostnameRegistrable(emailParts.hostname)) {
+                pslIndex.isHostnameRegistrable(emailParts.hostname)
+            ) {
                 CheckResult.PASSED
             } else if (pslIndex == null || !isHostnameValid) {
                 CheckResult.SKIPPED
@@ -89,7 +91,8 @@ class EmailVerifier(
         val mxRecordCheck =
             if (mxRecordChecker != null &&
                 isHostnameValid &&
-                mxRecordChecker.isPresent(emailParts.hostname)) {
+                mxRecordChecker.isPresent(emailParts.hostname)
+            ) {
                 CheckResult.PASSED
             } else if (mxRecordChecker == null || !isHostnameValid) {
                 CheckResult.SKIPPED
@@ -100,7 +103,8 @@ class EmailVerifier(
         val disposabilityCheck =
             if (disposableEmailChecker != null &&
                 isHostnameValid &&
-                !disposableEmailChecker.isDisposable(emailParts.hostname)) {
+                !disposableEmailChecker.isDisposable(emailParts.hostname)
+            ) {
                 CheckResult.PASSED
             } else if (disposableEmailChecker == null || !isHostnameValid) {
                 CheckResult.SKIPPED
@@ -113,7 +117,7 @@ class EmailVerifier(
             syntaxCheck,
             registrabilityCheck,
             mxRecordCheck,
-            disposabilityCheck
+            disposabilityCheck,
         )
     }
 
@@ -129,19 +133,28 @@ class EmailVerifier(
         suspend fun init(config: EmailVerifierConfig = EmailVerifierConfig()): EmailVerifier {
             val emailSyntaxChecker = EmailSyntaxChecker()
 
-            val pslIndex = if (config.enableRegistrabilityCheck) {
-                PslIndex.init(OnlineLFDomainsProvider(config.pslURL))
-            } else null
+            val pslIndex =
+                if (config.enableRegistrabilityCheck) {
+                    PslIndex.init(OnlineLFDomainsProvider(config.pslURL))
+                } else {
+                    null
+                }
 
-            val mxRecordChecker = if (config.enableMxRecordCheck)
-                MxRecordChecker(GoogleDoHLookupBackend(config.dohServerEndpoint))
-            else null
+            val mxRecordChecker =
+                if (config.enableMxRecordCheck) {
+                    MxRecordChecker(GoogleDoHLookupBackend(config.dohServerEndpoint))
+                } else {
+                    null
+                }
 
-            val disposableEmailChecker = if (config.enableDisposabilityCheck)
-                DisposableEmailChecker.init(
-                    OnlineLFDomainsProvider(config.disposableDomainsListUrl)
-                )
-            else null
+            val disposableEmailChecker =
+                if (config.enableDisposabilityCheck) {
+                    DisposableEmailChecker.init(
+                        OnlineLFDomainsProvider(config.disposableDomainsListUrl),
+                    )
+                } else {
+                    null
+                }
 
             return EmailVerifier(emailSyntaxChecker, pslIndex, mxRecordChecker, disposableEmailChecker)
         }
@@ -167,5 +180,5 @@ data class EmailVerifierConfig(
     val enableMxRecordCheck: Boolean = true,
     val dohServerEndpoint: String = GoogleDoHLookupBackend.GOOGLE_DOH_URL,
     val enableDisposabilityCheck: Boolean = true,
-    val disposableDomainsListUrl: String = DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_URL
+    val disposableDomainsListUrl: String = DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_URL,
 )

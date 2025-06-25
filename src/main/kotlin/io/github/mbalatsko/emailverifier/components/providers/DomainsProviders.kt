@@ -1,9 +1,9 @@
 package io.github.mbalatsko.emailverifier.components.providers
 
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import java.net.IDN
 
 /**
@@ -31,13 +31,12 @@ abstract class LFDomainsProvider : DomainsProvider {
      */
     abstract suspend fun obtainData(): String
 
-    override suspend fun provide(): List<String> {
-        return obtainData()
+    override suspend fun provide(): List<String> =
+        obtainData()
             .lineSequence()
             .filter { it.isNotEmpty() && !it.startsWith("//") }
             .map { IDN.toASCII(it.trim().lowercase()) }
             .toList()
-    }
 }
 
 /**
@@ -46,7 +45,10 @@ abstract class LFDomainsProvider : DomainsProvider {
  * @property url the HTTP(S) address of the linefeed-separated domain list.
  * @property httpClient HTTP client used to download linefeed-separated domain list from [url]
  */
-class OnlineLFDomainsProvider(val url: String, val httpClient: HttpClient = HttpClient(CIO)) : LFDomainsProvider() {
+class OnlineLFDomainsProvider(
+    val url: String,
+    val httpClient: HttpClient = HttpClient(CIO),
+) : LFDomainsProvider() {
     /**
      * Performs an HTTP GET request to fetch the domain list.
      *

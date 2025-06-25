@@ -1,11 +1,9 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -36,14 +34,20 @@ interface DnsLookupBackend {
  * @property httpClient HTTP client used to get Google-like DoH response from [baseURL]?name=<hostname>&type=MX
  */
 class GoogleDoHLookupBackend(
-    val baseURL: String = GOOGLE_DOH_URL, val httpClient: HttpClient = HttpClient(CIO)) :
-    DnsLookupBackend {
+    val baseURL: String = GOOGLE_DOH_URL,
+    val httpClient: HttpClient = HttpClient(CIO),
+) : DnsLookupBackend {
+    @Serializable
+    private data class Answer(
+        val data: String,
+        val name: String,
+        val type: Int,
+    )
 
     @Serializable
-    private data class Answer(val data: String, val name: String, val type: Int)
-
-    @Serializable
-    private data class DnsResponse(val Answer: List<Answer>? = null)
+    private data class DnsResponse(
+        val Answer: List<Answer>? = null,
+    )
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -73,14 +77,14 @@ class GoogleDoHLookupBackend(
  *
  * @property dnsLookupBackend the backend used to perform DNS queries.
  */
-class MxRecordChecker(val dnsLookupBackend: DnsLookupBackend) {
+class MxRecordChecker(
+    val dnsLookupBackend: DnsLookupBackend,
+) {
     /**
      * Determines whether MX records exist for the given hostname.
      *
      * @param hostname the domain to check.
      * @return `true` if MX records are present, `false` otherwise.
      */
-    suspend fun isPresent(hostname: String): Boolean {
-        return dnsLookupBackend.hasMxRecords(hostname)
-    }
+    suspend fun isPresent(hostname: String): Boolean = dnsLookupBackend.hasMxRecords(hostname)
 }

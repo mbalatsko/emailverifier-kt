@@ -8,7 +8,9 @@ import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
  * Parses rules from a [DomainsProvider], typically using the PSL format from publicsuffix.org.
  * Supports normal, wildcard (`*.`), and exception (`!`) rules per PSL specification.
  */
-class PslIndex(val domainsProvider: DomainsProvider) {
+class PslIndex(
+    val domainsProvider: DomainsProvider,
+) {
     /**
      * Internal node structure for PSL trie.
      *
@@ -21,7 +23,7 @@ class PslIndex(val domainsProvider: DomainsProvider) {
         val children: MutableMap<String, Node> = mutableMapOf(),
         var isSuffix: Boolean = false,
         var isException: Boolean = false,
-        var isWildcard: Boolean = false
+        var isWildcard: Boolean = false,
     )
 
     private var root = Node()
@@ -80,7 +82,12 @@ class PslIndex(val domainsProvider: DomainsProvider) {
      * @return `true` if registrable, `false` otherwise.
      */
     fun isHostnameRegistrable(hostname: String): Boolean {
-        val labels = hostname.trim().lowercase().split(".").reversed()
+        val labels =
+            hostname
+                .trim()
+                .lowercase()
+                .split(".")
+                .reversed()
         // TLDs are not registrable in general
         if (labels.size == 1) {
             return false

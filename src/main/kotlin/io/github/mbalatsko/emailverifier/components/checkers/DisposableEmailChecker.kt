@@ -8,7 +8,9 @@ import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
  * Accepts a [DomainsProvider] that supplies a list of known disposable domains,
  * typically from public blacklists such as `disposable-email-domains`.
  */
-class DisposableEmailChecker(val domainsProvider: DomainsProvider) {
+class DisposableEmailChecker(
+    val domainsProvider: DomainsProvider,
+) {
     private var disposableDomainsSet = emptySet<String>()
 
     /**
@@ -48,13 +50,15 @@ class DisposableEmailChecker(val domainsProvider: DomainsProvider) {
          * URL of the strict disposable email domain list and e-mail services which do allow anonymous signup.
          * See https://github.com/disposable/disposable?tab=readme-ov-file#strict-mode for details.
          */
-        const val DISPOSABLE_EMAILS_LIST_STRICT_URL = "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains_strict.txt"
+        const val DISPOSABLE_EMAILS_LIST_STRICT_URL =
+            "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains_strict.txt"
 
         /**
          * URL of the general disposable email domain list.
          * See https://github.com/disposable/disposable?tab=readme-ov-file#normal-mode for details.
          */
-        const val DISPOSABLE_EMAILS_LIST_NORMAL_URL = "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.txt"
+        const val DISPOSABLE_EMAILS_LIST_NORMAL_URL =
+            "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.txt"
 
         suspend fun init(domainsProvider: DomainsProvider): DisposableEmailChecker {
             val disposableEmailChecker = DisposableEmailChecker(domainsProvider)

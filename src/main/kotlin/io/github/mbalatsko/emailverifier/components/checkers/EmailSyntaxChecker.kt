@@ -9,7 +9,11 @@ import java.net.IDN
  * @property plusTag the optional plus tag suffix (after '+', if present).
  * @property hostname the domain part of the email.
  */
-data class EmailParts(val username: String, val plusTag: String, val hostname: String)
+data class EmailParts(
+    val username: String,
+    val plusTag: String,
+    val hostname: String,
+)
 
 /**
  * Performs syntax validation on components of an email address.
@@ -18,7 +22,6 @@ data class EmailParts(val username: String, val plusTag: String, val hostname: S
  * according to a subset of RFC 5322 and IDN rules.
  */
 class EmailSyntaxChecker {
-
     /**
      * Parses an email address into its logical parts.
      *
@@ -40,7 +43,9 @@ class EmailSyntaxChecker {
         val username = usernameParts[0]
         val plusTag = usernameParts.getOrElse(1) { "" }
         return EmailParts(
-            username, plusTag, hostname
+            username,
+            plusTag,
+            hostname,
         )
     }
 
