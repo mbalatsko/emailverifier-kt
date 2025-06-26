@@ -59,7 +59,7 @@ class DisposableEmailCheckerTest {
     @Test
     fun `init companion correctly loads data`() =
         runTest {
-            val checker = DisposableEmailChecker.init(TestDomainsProvider(testDomains))
+            val checker = DisposableEmailChecker.Companion.init(TestDomainsProvider(testDomains))
             // After init, data should be loaded and isDisposable should work
             assertTrue(checker.isDisposable("temp-mail.org"))
             assertFalse(checker.isDisposable("example.com"))

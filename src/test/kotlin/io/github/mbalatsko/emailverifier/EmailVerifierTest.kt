@@ -1,8 +1,5 @@
-package io.github.mbalatsko.emailverifier.components
+package io.github.mbalatsko.emailverifier
 
-import io.github.mbalatsko.emailverifier.CheckResult
-import io.github.mbalatsko.emailverifier.EmailVerifier
-import io.github.mbalatsko.emailverifier.EmailVerifierConfig
 import io.github.mbalatsko.emailverifier.components.checkers.DisposableEmailChecker
 import io.github.mbalatsko.emailverifier.components.checkers.DnsLookupBackend
 import io.github.mbalatsko.emailverifier.components.checkers.EmailSyntaxChecker
@@ -14,7 +11,6 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-
 
 class EmailVerifierLocalTest {
     /**
