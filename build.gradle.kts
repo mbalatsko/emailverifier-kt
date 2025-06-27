@@ -2,11 +2,19 @@ plugins {
     kotlin("jvm") version "2.1.20"
     id("com.diffplug.spotless") version "7.0.4"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
+
+    id("org.jreleaser") version "1.18.0"
+    signing
+    `maven-publish`
+    `java-library`
 }
 
-group = "io.github.mbalatsko.emailverifier"
-
-version = "1.0-SNAPSHOT"
+group = "io.github.mbalatsko"
+version = "0.1"
+description = "EmailVerifier is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax."
+val licenseName = "MIT"
+val authorUsername = "mbalastko"
+val authorName = "Maksym Balatsko"
 
 repositories { mavenCentral() }
 
@@ -33,37 +41,74 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
             from(components["java"])
-            artifactId = "emailverifier-kt"
             pom {
-                name = project.name
-                description =
-                    "EmailVerifier is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax. It's built with a clear focus: help developers reliably assess whether a given email is real, meaningful, and worth accepting."
-                url = "https://mbalatsko.github.io/emailverifier-kt/"
+                name = rootProject.name
+                description = project.description
+                url = "https://github.com/$authorUsername/${rootProject.name}"
                 licenses {
                     license {
-                        name = "MIT License"
-                        url = "https://opensource.org/licenses/MIT"
-                        distribution = "repo"
+                        name = licenseName
+                        url = "https://opensource.org/licenses/$licenseName"
                     }
                 }
                 developers {
                     developer {
-                        id = "mbalatsko"
-                        name = "Maksym Balatsko"
-                        email = "mbalatsko@gmail.com"
+                        id = authorUsername
+                        name = authorName
                     }
                 }
                 scm {
-                    connection = "scm:git:https://github.com/mbalatsko/emailverifier-kt.git"
-                    developerConnection = "scm:git:ssh://github.com/mbalatsko/emailverifier-kt.git"
-                    url = "https://github.com/mbalatsko/emailverifier-kt"
+                    url = "https://github.com/$authorUsername/${rootProject.name}"
                 }
             }
         }
+    }
+
+    repositories {
+        maven {
+            url = uri(layout.buildDirectory.dir("staging-deploy"))
+        }
+    }
+}
+
+jreleaser {
+    project {
+        name = rootProject.name
+        version = rootProject.version.toString()
+        description = rootProject.description
+        authors = listOf(authorName)
+        license = licenseName
+    }
+
+    deploy {
+        maven {
+            mavenCentral {
+                create("sonatype") {
+                    setActive("ALWAYS")
+                    url = "https://central.sonatype.com/api/v1/publisher"
+                    stagingRepository("build/staging-deploy")
+                    snapshotSupported = true
+                }
+            }
+        }
+    }
+
+    signing {
+        setActive("ALWAYS")
+        armored = true
+    }
+
+    checksum {
+        individual = true
     }
 }
 

@@ -14,7 +14,7 @@ Checks the structure of the email:
 ### 2. **Registrability Check**
 Verifies whether the email domain is **registrable**:
 - Uses the [Public Suffix List](https://publicsuffix.org/)
-- Rejects emails like `user@co.uk`, allows `user@example.co.uk`
+- Rejects emails like `user@something.invalid`, allows `user@example.co.uk`
 
 ### 3. **MX Record Lookup**
 Ensures the domain is actually configured to receive emails:
