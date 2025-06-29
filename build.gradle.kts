@@ -13,7 +13,7 @@ group = "io.github.mbalatsko"
 version = "0.1"
 description = "EmailVerifier is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax."
 val licenseName = "MIT"
-val authorUsername = "mbalastko"
+val authorUsername = "mbalatsko"
 val authorName = "Maksym Balatsko"
 
 repositories { mavenCentral() }
@@ -96,7 +96,16 @@ jreleaser {
                     setActive("ALWAYS")
                     url = "https://central.sonatype.com/api/v1/publisher"
                     stagingRepository("build/staging-deploy")
-                    snapshotSupported = true
+                }
+            }
+        }
+        maven {
+            github {
+                create("app") {
+                    setActive("ALWAYS")
+                    url = "https://maven.pkg.github.com/$authorUsername/${rootProject.name}"
+                    applyMavenCentralRules = true
+                    stagingRepository("build/staging-deploy")
                 }
             }
         }
