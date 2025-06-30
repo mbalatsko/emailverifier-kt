@@ -1,5 +1,13 @@
 # EmailVerifier 📬
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.mbalatsko/emailverifier-kt.svg?label=Maven%20Central)](https://search.maven.org/artifact/io.github.mbalatsko/emailverifier-kt)
+[![GitHub Packages](https://img.shields.io/badge/github-packages-blue)](https://github.com/mbalatsko/emailverifier-kt/packages)
+[![License: MIT](https://img.shields.io/github/license/mbalatsko/emailverifier-kt)](https://github.com/mbalatsko/emailverifier-kt/blob/main/LICENSE)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.1.20-blue.svg?logo=kotlin)](https://kotlinlang.org/)
+[![Latest Release](https://img.shields.io/github/release/mbalatsko/emailverifier-kt.svg)](https://github.com/mbalatsko/emailverifier-kt/releases)
+[![Platform](https://img.shields.io/badge/platform-jvm-blue)](#)
+
+
 **EmailVerifier** is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax. It's built with a clear focus: help developers **reliably assess whether a given email is real, meaningful, and worth accepting**.
 
 ## ✅ Features
@@ -50,6 +58,24 @@ Each check can return:
 ## 🚀 Getting Started
 
 ### 1. Add dependency (JVM only for now)
+
+Maven:
+
+```xml
+<dependency>
+    <groupId>io.github.mbalatsko</groupId>
+    <artifactId>emailverifier-kt</artifactId>
+    <version>0.1</version>
+</dependency>
+```
+
+Gradle:
+
+```groovy
+implementation("io.github.mbalatsko:emailverifier-kt:0.1")
+```
+
+Also available on [Github Packages](https://github.com/mbalatsko/emailverifier-kt/packages/2563296)
 
 ### 2. Basic usage
 
