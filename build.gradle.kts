@@ -88,13 +88,6 @@ publishing {
 }
 
 jreleaser {
-    distributions {
-        create("app") {
-            artifact {
-                setPath("build/distributions/{{distributionName}}-{{projectVersion}}.zip")
-            }
-        }
-    }
 
     deploy {
         maven {
