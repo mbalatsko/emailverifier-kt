@@ -6,6 +6,7 @@ plugins {
     id("org.jreleaser") version "1.18.0"
     signing
     id("org.kordamp.gradle.java-project") version "0.54.0"
+    id("org.jetbrains.dokka") version "2.0.0"
 }
 
 group = "io.github.mbalatsko"
