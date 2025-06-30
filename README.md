@@ -65,14 +65,14 @@ Maven:
 <dependency>
     <groupId>io.github.mbalatsko</groupId>
     <artifactId>emailverifier-kt</artifactId>
-    <version>0.1</version>
+    <version>LATEST_VERSION</version>
 </dependency>
 ```
 
 Gradle:
 
 ```groovy
-implementation("io.github.mbalatsko:emailverifier-kt:0.1")
+implementation("io.github.mbalatsko:emailverifier-kt:LATEST_VERSION")
 ```
 
 Also available on [Github Packages](https://github.com/mbalatsko/emailverifier-kt/packages/2563296)
