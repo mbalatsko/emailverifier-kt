@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "io.github.mbalatsko"
-version = "0.1"
+version = "0.2"
 description = "EmailVerifier is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax."
 
 repositories {
