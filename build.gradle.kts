@@ -5,18 +5,17 @@ plugins {
 
     id("org.jreleaser") version "1.18.0"
     signing
-    `maven-publish`
-    `java-library`
+    id("org.kordamp.gradle.java-project") version "0.54.0"
 }
 
 group = "io.github.mbalatsko"
 version = "0.1"
 description = "EmailVerifier is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax."
-val licenseName = "MIT"
-val authorUsername = "mbalatsko"
-val authorName = "Maksym Balatsko"
 
-repositories { mavenCentral() }
+repositories {
+    gradlePluginPortal()
+    mavenCentral()
+}
 
 spotless {
     kotlin {
@@ -41,38 +40,45 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
 
-java {
-    withJavadocJar()
-    withSourcesJar()
-}
+config {
+    info {
+        name = rootProject.name
+        description = rootProject.description
+        inceptionYear = "2025"
+        vendor = "Maksym Balatsko"
 
-publishing {
-    publications {
-        create<MavenPublication>("mavenJava") {
-            from(components["java"])
-            pom {
-                name = rootProject.name
-                description = project.description
-                url = "https://github.com/$authorUsername/${rootProject.name}"
-                licenses {
-                    license {
-                        name = licenseName
-                        url = "https://opensource.org/licenses/$licenseName"
-                    }
-                }
-                developers {
-                    developer {
-                        id = authorUsername
-                        name = authorName
-                    }
-                }
-                scm {
-                    url = "https://github.com/$authorUsername/${rootProject.name}"
-                }
+        links {
+            website = "https://github.com/mbalatsko/${rootProject.name}"
+            issueTracker = "https://github.com/mbalatsko/${rootProject.name}/issues"
+            scm = "https://github.com/mbalatsko/${rootProject.name}.git"
+        }
+
+        scm {
+            url = "https://github.com/mbalatsko/${rootProject.name}"
+            connection = "scm:git:https://github.com/mbalatsko/${rootProject.name}.git"
+            developerConnection = "scm:git:git@github.com:mbalatsko/${rootProject.name}.git"
+        }
+
+        people {
+            person {
+                id = "mbalatsko"
+                name = "Maksym Balatsko"
+                roles.addAll(arrayOf("developer", "author"))
             }
         }
     }
 
+    licensing {
+        licenses {
+            license {
+                id = "MIT"
+                excludes = setOf("**/*")
+            }
+        }
+    }
+}
+
+publishing {
     repositories {
         maven {
             url = uri(layout.buildDirectory.dir("staging-deploy"))
@@ -81,12 +87,12 @@ publishing {
 }
 
 jreleaser {
-    project {
-        name = rootProject.name
-        version = rootProject.version.toString()
-        description = rootProject.description
-        authors = listOf(authorName)
-        license = licenseName
+    distributions {
+        create("app") {
+            artifact {
+                setPath("build/distributions/{{distributionName}}-{{projectVersion}}.zip")
+            }
+        }
     }
 
     deploy {
@@ -103,7 +109,6 @@ jreleaser {
             github {
                 create("app") {
                     setActive("ALWAYS")
-                    url = "https://maven.pkg.github.com/$authorUsername/${rootProject.name}"
                     applyMavenCentralRules = true
                     stagingRepository("build/staging-deploy")
                 }
