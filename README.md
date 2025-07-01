@@ -59,7 +59,8 @@ data class EmailValidationResult(
     val registrabilityCheck: CheckResult,
     val mxRecordCheck: CheckResult,
     val disposabilityCheck: CheckResult,
-    val gravatarCheck: CheckResult
+    val gravatarCheck: CheckResult,
+    val freeCheck: CheckResult
 ) {
   /**
    * Returns true if all strong indicator checks either passed or were skipped.
