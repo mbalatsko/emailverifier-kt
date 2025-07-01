@@ -2,6 +2,7 @@ package io.github.mbalatsko.emailverifier
 
 import io.github.mbalatsko.emailverifier.components.checkers.DisposableEmailChecker
 import io.github.mbalatsko.emailverifier.components.checkers.EmailSyntaxChecker
+import io.github.mbalatsko.emailverifier.components.checkers.FreeChecker
 import io.github.mbalatsko.emailverifier.components.checkers.GoogleDoHLookupBackend
 import io.github.mbalatsko.emailverifier.components.checkers.GravatarChecker
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
@@ -23,6 +24,7 @@ enum class CheckResult {
  * @property mxRecordCheck result of MX record existence check.
  * @property disposabilityCheck result of disposable domain detection.
  * @property gravatarCheck result of gravatar presence check, `FAILED` if gravatar is not present
+ * @property freeCheck result of check against list of known free‐email provider, `PASSED` if email hostname is not a known free‐email provider
  */
 data class EmailValidationResult(
     val email: String,
@@ -31,6 +33,7 @@ data class EmailValidationResult(
     val mxRecordCheck: CheckResult = CheckResult.SKIPPED,
     val disposabilityCheck: CheckResult = CheckResult.SKIPPED,
     val gravatarCheck: CheckResult = CheckResult.SKIPPED,
+    val freeCheck: CheckResult = CheckResult.SKIPPED,
 ) {
     /**
      * Returns true if all strong indicator checks either passed or were skipped.
@@ -57,6 +60,7 @@ class EmailVerifier(
     private val mxRecordChecker: MxRecordChecker?,
     private val disposableEmailChecker: DisposableEmailChecker?,
     private val gravatarChecker: GravatarChecker?,
+    private val freeChecker: FreeChecker?,
 ) {
     /**
      * Validates the given email address using configured checks.
@@ -130,6 +134,18 @@ class EmailVerifier(
                 CheckResult.FAILED
             }
 
+        val freeCheck =
+            if (freeChecker != null &&
+                isHostnameValid &&
+                !freeChecker.isFree(emailParts.hostname)
+            ) {
+                CheckResult.PASSED
+            } else if (freeChecker == null || !isHostnameValid) {
+                CheckResult.SKIPPED
+            } else {
+                CheckResult.FAILED
+            }
+
         return EmailValidationResult(
             email,
             syntaxCheck,
@@ -137,6 +153,7 @@ class EmailVerifier(
             mxRecordCheck,
             disposabilityCheck,
             gravatarCheck,
+            freeCheck,
         )
     }
 
@@ -182,7 +199,14 @@ class EmailVerifier(
                     null
                 }
 
-            return EmailVerifier(emailSyntaxChecker, pslIndex, mxRecordChecker, disposableEmailChecker, gravatarChecker)
+            val freeChecker =
+                if (config.enableFreeCheck) {
+                    FreeChecker.init(OnlineLFDomainsProvider(config.freeEmailsListUrls))
+                } else {
+                    null
+                }
+
+            return EmailVerifier(emailSyntaxChecker, pslIndex, mxRecordChecker, disposableEmailChecker, gravatarChecker, freeChecker)
         }
     }
 }
@@ -200,6 +224,8 @@ class EmailVerifier(
  * @property enableDisposabilityCheck enables detection of disposable domains.
  * @property disposableDomainsListUrl the URL of the domain list for disposability check.
  * @property enableGravatarCheck enables Gravatar presence check
+ * @property enableFreeCheck enables check against list of known free‐email provider.
+ * @property freeEmailsListUrls the URL of the domain list for free-email provider check.
  */
 data class EmailVerifierConfig(
     val enableRegistrabilityCheck: Boolean = true,
@@ -209,4 +235,6 @@ data class EmailVerifierConfig(
     val enableDisposabilityCheck: Boolean = true,
     val disposableDomainsListUrl: String = DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_URL,
     val enableGravatarCheck: Boolean = true,
+    val enableFreeCheck: Boolean = true,
+    val freeEmailsListUrls: String = FreeChecker.FREE_EMAILS_LIST_URL,
 )

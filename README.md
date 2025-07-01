@@ -38,7 +38,15 @@ Filters out **temporary/disposable** email domains:
 
 Detects whether an email has an associated **Gravatar**:
 - Computes MD5 hash of the email
-- Returns `PASSED` result if a custom avatar exists, false otherwise
+- Returns `PASSED` result if a custom avatar exists
+
+### 6. **Free Email Provider Detection**
+Checks whether the email domain belongs to a known free‐email provider (e.g. `gmail.com`, `yahoo.com`) 
+using a curated list of popular services.
+- Returns `PASSED` result if email hostname is not a known free‐email provider
+
+List used: [Github gist](https://gist.github.com/okutbay/5b4974b70673dfdcc21c517632c1f984) by @okutbay 
+
 
 ## 🧪 Output: Validation Results
 
@@ -51,7 +59,8 @@ data class EmailValidationResult(
     val registrabilityCheck: CheckResult,
     val mxRecordCheck: CheckResult,
     val disposabilityCheck: CheckResult,
-    val gravatarCheck: CheckResult
+    val gravatarCheck: CheckResult,
+    val freeCheck: CheckResult
 ) {
   /**
    * Returns true if all strong indicator checks either passed or were skipped.
@@ -125,7 +134,6 @@ Planned features:
 
 * **Role-Based Username Detection** 
   * Flag addresses like `info@`, `admin@`, `support@` that are not person-specific
-* **Free** email registars detection
 * **Typo check** suggestions
 * **SMTP Probing**
   * Connect to the target mail server and verify deliverability via the `RCPT TO` SMTP command (without sending email)
