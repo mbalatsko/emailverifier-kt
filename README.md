@@ -34,6 +34,12 @@ Filters out **temporary/disposable** email domains:
 - Uses curated lists from [disposable-email-domains](https://github.com/disposable/disposable-email-domains)
 - Detects domains like `mailinator.com`, `tempmail.org`, etc.
 
+### 5. Gravatar Existence Check
+
+Detects whether an email has an associated **Gravatar**:
+- Computes MD5 hash of the email
+- Returns `PASSED` result if a custom avatar exists, false otherwise
+
 ## 🧪 Output: Validation Results
 
 You get a detailed result for each check:
@@ -44,9 +50,14 @@ data class EmailValidationResult(
     val syntaxCheck: CheckResult,
     val registrabilityCheck: CheckResult,
     val mxRecordCheck: CheckResult,
-    val disposabilityCheck: CheckResult
+    val disposabilityCheck: CheckResult,
+    val gravatarCheck: CheckResult
 ) {
-    fun ok(): Boolean // true if all enabled checks passed
+  /**
+   * Returns true if all strong indicator checks either passed or were skipped.
+   * Strong indicator checks: syntax, registrability, mx record presence, disposability
+   */
+    fun ok(): Boolean
 }
 ```
 
@@ -114,6 +125,8 @@ Planned features:
 
 * **Role-Based Username Detection** 
   * Flag addresses like `info@`, `admin@`, `support@` that are not person-specific
+* **Free** email registars detection
+* **Typo check** suggestions
 * **SMTP Probing**
   * Connect to the target mail server and verify deliverability via the `RCPT TO` SMTP command (without sending email)
 * **Multiplatform Support**

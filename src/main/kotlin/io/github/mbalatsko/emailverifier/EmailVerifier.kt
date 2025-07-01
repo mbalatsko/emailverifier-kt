@@ -3,6 +3,7 @@ package io.github.mbalatsko.emailverifier
 import io.github.mbalatsko.emailverifier.components.checkers.DisposableEmailChecker
 import io.github.mbalatsko.emailverifier.components.checkers.EmailSyntaxChecker
 import io.github.mbalatsko.emailverifier.components.checkers.GoogleDoHLookupBackend
+import io.github.mbalatsko.emailverifier.components.checkers.GravatarChecker
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.providers.OnlineLFDomainsProvider
@@ -21,6 +22,7 @@ enum class CheckResult {
  * @property registrabilityCheck result of public suffix (PSL) registrability validation.
  * @property mxRecordCheck result of MX record existence check.
  * @property disposabilityCheck result of disposable domain detection.
+ * @property gravatarCheck result of gravatar presence check, `FAILED` if gravatar is not present
  */
 data class EmailValidationResult(
     val email: String,
@@ -28,9 +30,11 @@ data class EmailValidationResult(
     val registrabilityCheck: CheckResult = CheckResult.SKIPPED,
     val mxRecordCheck: CheckResult = CheckResult.SKIPPED,
     val disposabilityCheck: CheckResult = CheckResult.SKIPPED,
+    val gravatarCheck: CheckResult = CheckResult.SKIPPED,
 ) {
     /**
-     * Returns true if all checks either passed or were skipped.
+     * Returns true if all strong indicator checks either passed or were skipped.
+     * Strong indicator checks: syntax, registrability, mx record presence, disposability
      */
     fun ok(): Boolean =
         syntaxCheck != CheckResult.FAILED &&
@@ -52,6 +56,7 @@ class EmailVerifier(
     private val pslIndex: PslIndex?,
     private val mxRecordChecker: MxRecordChecker?,
     private val disposableEmailChecker: DisposableEmailChecker?,
+    private val gravatarChecker: GravatarChecker?,
 ) {
     /**
      * Validates the given email address using configured checks.
@@ -112,12 +117,26 @@ class EmailVerifier(
                 CheckResult.FAILED
             }
 
+        val gravatarCheck =
+            if (gravatarChecker != null &&
+                isHostnameValid &&
+                isUsernameValid &&
+                gravatarChecker.hasGravatar("${emailParts.username}@${emailParts.hostname}")
+            ) {
+                CheckResult.PASSED
+            } else if (gravatarChecker == null || !isHostnameValid || !isUsernameValid) {
+                CheckResult.SKIPPED
+            } else {
+                CheckResult.FAILED
+            }
+
         return EmailValidationResult(
             email,
             syntaxCheck,
             registrabilityCheck,
             mxRecordCheck,
             disposabilityCheck,
+            gravatarCheck,
         )
     }
 
@@ -156,7 +175,14 @@ class EmailVerifier(
                     null
                 }
 
-            return EmailVerifier(emailSyntaxChecker, pslIndex, mxRecordChecker, disposableEmailChecker)
+            val gravatarChecker =
+                if (config.enableGravatarCheck) {
+                    GravatarChecker()
+                } else {
+                    null
+                }
+
+            return EmailVerifier(emailSyntaxChecker, pslIndex, mxRecordChecker, disposableEmailChecker, gravatarChecker)
         }
     }
 }
@@ -173,6 +199,7 @@ class EmailVerifier(
  * @property dohServerEndpoint the DoH resolver endpoint (used by MX check). See [GoogleDoHLookupBackend] for expected URL format and server behaviour.
  * @property enableDisposabilityCheck enables detection of disposable domains.
  * @property disposableDomainsListUrl the URL of the domain list for disposability check.
+ * @property enableGravatarCheck enables Gravatar presence check
  */
 data class EmailVerifierConfig(
     val enableRegistrabilityCheck: Boolean = true,
@@ -181,4 +208,5 @@ data class EmailVerifierConfig(
     val dohServerEndpoint: String = GoogleDoHLookupBackend.GOOGLE_DOH_URL,
     val enableDisposabilityCheck: Boolean = true,
     val disposableDomainsListUrl: String = DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_URL,
+    val enableGravatarCheck: Boolean = true,
 )

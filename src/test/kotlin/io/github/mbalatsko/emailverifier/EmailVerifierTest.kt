@@ -3,6 +3,7 @@ package io.github.mbalatsko.emailverifier
 import io.github.mbalatsko.emailverifier.components.checkers.DisposableEmailChecker
 import io.github.mbalatsko.emailverifier.components.checkers.DnsLookupBackend
 import io.github.mbalatsko.emailverifier.components.checkers.EmailSyntaxChecker
+import io.github.mbalatsko.emailverifier.components.checkers.GravatarChecker
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
@@ -48,6 +49,7 @@ class EmailVerifierLocalTest {
             pslIndex = psl,
             mxRecordChecker = mxChecker,
             disposableEmailChecker = disposableChecker,
+            gravatarChecker = GravatarChecker(),
         )
     }
 
@@ -130,10 +132,18 @@ class EmailVerifierOnlineTest {
     val onlineEmailVerifier = runBlocking { EmailVerifier.init() }
 
     @Test
-    fun `integration passes all checks online`() =
+    fun `integration passes all checks online, but fails gravatar`() =
         runTest {
             val result = onlineEmailVerifier.verify("mbalatsko@gmail.com")
             assertTrue(result.ok())
+            assertTrue(result.gravatarCheck == CheckResult.FAILED)
+        }
+
+    @Test
+    fun `integration passes gravatar check`() =
+        runTest {
+            val result = onlineEmailVerifier.verify("jitewaboh@lagify.com")
+            assertTrue(result.gravatarCheck == CheckResult.PASSED)
         }
 
     @Test
