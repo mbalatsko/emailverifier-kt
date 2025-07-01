@@ -11,7 +11,18 @@ plugins {
 
 group = "io.github.mbalatsko"
 version = "0.3-SNAPSHOT"
-description = "EmailVerifier is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax."
+description =
+    """
+    EmailVerifier is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax.
+    It's built with a clear focus: help developers reliably assess whether a given email is real, meaningful, and worth accepting.
+    Features: 
+    - syntax validation
+    - registrability check
+    - mx record lookup
+    - disposable email detection
+    - gravatar existence check
+    - free email provider detection
+    """.trimIndent()
 
 repositories {
     gradlePluginPortal()

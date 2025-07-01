@@ -34,7 +34,7 @@ Filters out **temporary/disposable** email domains:
 - Uses curated lists from [disposable-email-domains](https://github.com/disposable/disposable-email-domains)
 - Detects domains like `mailinator.com`, `tempmail.org`, etc.
 
-### 5. Gravatar Existence Check
+### 5. **Gravatar Existence Check**
 
 Detects whether an email has an associated **Gravatar**:
 - Computes MD5 hash of the email
