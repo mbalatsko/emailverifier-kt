@@ -3,7 +3,7 @@ package io.github.mbalatsko.emailverifier
 import io.github.mbalatsko.emailverifier.components.checkers.DisposableEmailChecker
 import io.github.mbalatsko.emailverifier.components.checkers.DnsLookupBackend
 import io.github.mbalatsko.emailverifier.components.checkers.EmailSyntaxChecker
-import io.github.mbalatsko.emailverifier.components.checkers.GravatarChecker
+import io.github.mbalatsko.emailverifier.components.checkers.FreeChecker
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
@@ -35,6 +35,7 @@ class EmailVerifierLocalTest {
     private suspend fun buildVerifier(
         hasMx: Boolean,
         disposable: Boolean,
+        free: Boolean,
     ): EmailVerifier {
         val psl = PslIndex.init(FixedListProvider(listOf("com", "co.uk")))
         val disposableChecker =
@@ -44,31 +45,39 @@ class EmailVerifierLocalTest {
                 ),
             )
         val mxChecker = MxRecordChecker(FakeDnsBackend(hasMx))
+        val freeChecker =
+            FreeChecker.init(
+                FixedListProvider(
+                    if (free) listOf("free.com") else emptyList(),
+                ),
+            )
         return EmailVerifier(
             emailSyntaxChecker = EmailSyntaxChecker(),
             pslIndex = psl,
             mxRecordChecker = mxChecker,
             disposableEmailChecker = disposableChecker,
-            gravatarChecker = GravatarChecker(),
+            gravatarChecker = null,
+            freeChecker = freeChecker,
         )
     }
 
     @Test
     fun `integration passes all checks`() =
         runTest {
-            val verifier = buildVerifier(hasMx = true, disposable = false)
+            val verifier = buildVerifier(hasMx = true, disposable = false, free = false)
             val result = verifier.verify("user@example.com")
             assertTrue(result.syntaxCheck == CheckResult.PASSED)
             assertTrue(result.registrabilityCheck == CheckResult.PASSED)
             assertTrue(result.mxRecordCheck == CheckResult.PASSED)
             assertTrue(result.disposabilityCheck == CheckResult.PASSED)
+            assertTrue(result.freeCheck == CheckResult.PASSED)
             assertTrue(result.ok())
         }
 
     @Test
     fun `integration fails syntax`() =
         runTest {
-            val verifier = buildVerifier(hasMx = true, disposable = false)
+            val verifier = buildVerifier(hasMx = true, disposable = false, free = false)
             val result = verifier.verify("bad@@example.com")
             assertFalse(result.ok())
             assertTrue(result.syntaxCheck == CheckResult.FAILED)
@@ -76,12 +85,13 @@ class EmailVerifierLocalTest {
             assertTrue(result.registrabilityCheck == CheckResult.SKIPPED)
             assertTrue(result.mxRecordCheck == CheckResult.SKIPPED)
             assertTrue(result.disposabilityCheck == CheckResult.SKIPPED)
+            assertTrue(result.freeCheck == CheckResult.SKIPPED)
         }
 
     @Test
     fun `integration fails registrability`() =
         runTest {
-            val verifier = buildVerifier(hasMx = true, disposable = false)
+            val verifier = buildVerifier(hasMx = true, disposable = false, free = false)
             val result = verifier.verify("user@co.uk")
             assertFalse(result.ok())
             assertTrue(result.syntaxCheck == CheckResult.PASSED)
@@ -91,7 +101,7 @@ class EmailVerifierLocalTest {
     @Test
     fun `integration fails mx record`() =
         runTest {
-            val verifier = buildVerifier(hasMx = false, disposable = false)
+            val verifier = buildVerifier(hasMx = false, disposable = false, free = false)
             val result = verifier.verify("user@example.com")
             assertFalse(result.ok())
             assertTrue(result.syntaxCheck == CheckResult.PASSED)
@@ -101,10 +111,19 @@ class EmailVerifierLocalTest {
     @Test
     fun `integration fails disposability`() =
         runTest {
-            val verifier = buildVerifier(hasMx = true, disposable = true)
+            val verifier = buildVerifier(hasMx = true, disposable = true, free = false)
             val result = verifier.verify("user@disposable.com")
             assertFalse(result.ok())
             assertTrue(result.disposabilityCheck == CheckResult.FAILED)
+        }
+
+    @Test
+    fun `integration passes, free fails`() =
+        runTest {
+            val verifier = buildVerifier(hasMx = true, disposable = false, free = true)
+            val result = verifier.verify("user@free.com")
+            assertTrue(result.ok())
+            assertTrue(result.freeCheck == CheckResult.FAILED)
         }
 
     @Test
@@ -115,6 +134,7 @@ class EmailVerifierLocalTest {
                     enableRegistrabilityCheck = false,
                     enableMxRecordCheck = false,
                     enableDisposabilityCheck = false,
+                    enableFreeCheck = false,
                 )
             val verifier = EmailVerifier.init(config)
             val result = verifier.verify("user@anydomain.test")
@@ -124,6 +144,7 @@ class EmailVerifierLocalTest {
             assertTrue(result.registrabilityCheck == CheckResult.SKIPPED)
             assertTrue(result.mxRecordCheck == CheckResult.SKIPPED)
             assertTrue(result.disposabilityCheck == CheckResult.SKIPPED)
+            assertTrue(result.freeCheck == CheckResult.SKIPPED)
             assertTrue(result.ok())
         }
 }
@@ -132,11 +153,19 @@ class EmailVerifierOnlineTest {
     val onlineEmailVerifier = runBlocking { EmailVerifier.init() }
 
     @Test
-    fun `integration passes all checks online, but fails gravatar`() =
+    fun `integration passes all checks online, but fails gravatar and free`() =
         runTest {
             val result = onlineEmailVerifier.verify("mbalatsko@gmail.com")
             assertTrue(result.ok())
             assertTrue(result.gravatarCheck == CheckResult.FAILED)
+            assertTrue(result.freeCheck == CheckResult.FAILED)
+        }
+
+    @Test
+    fun `integration passes free check`() =
+        runTest {
+            val result = onlineEmailVerifier.verify("maksym.balatsko@blindspot.ai")
+            assertTrue(result.freeCheck == CheckResult.PASSED)
         }
 
     @Test
