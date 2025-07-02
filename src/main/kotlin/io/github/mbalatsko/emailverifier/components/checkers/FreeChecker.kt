@@ -8,12 +8,12 @@ import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
  * Loads a list of free email domains (e.g., gmail.com, yahoo.com) from a
  * [DomainsProvider] and allows rapid membership queries.
  *
- * @property domainsProvider source of newline-separated domain names.
+ * @property domainsProvider source of domain names.
  */
 class FreeChecker(
     val domainsProvider: DomainsProvider,
 ) {
-    private var disposableDomainsSet = emptySet<String>()
+    private var freeDomainsSet = emptySet<String>()
 
     /**
      * Loads and indexes the free-email domain list from the [domainsProvider].
@@ -21,7 +21,7 @@ class FreeChecker(
      * Must be called before invoking [isFree].
      */
     suspend fun loadData() {
-        disposableDomainsSet = domainsProvider.provide().toSet()
+        freeDomainsSet = domainsProvider.provide()
     }
 
     /**
@@ -30,7 +30,7 @@ class FreeChecker(
      * @param hostname the domain part of an email address.
      * @return `true` if the domain is recognized as a free-email provider.
      */
-    fun isFree(hostname: String): Boolean = hostname in disposableDomainsSet
+    fun isFree(hostname: String): Boolean = hostname in freeDomainsSet
 
     companion object {
         /**

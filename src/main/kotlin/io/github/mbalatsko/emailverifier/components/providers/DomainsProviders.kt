@@ -7,15 +7,15 @@ import io.ktor.client.statement.bodyAsText
 import java.net.IDN
 
 /**
- * Interface for providing a list of domain names.
+ * Interface for providing a set of domain names.
  */
 interface DomainsProvider {
     /**
      * Retrieves a list of domain names.
      *
-     * @return a list of ASCII-compatible domain names.
+     * @return a set of ASCII-compatible domain names.
      */
-    suspend fun provide(): List<String>
+    suspend fun provide(): Set<String>
 }
 
 /**
@@ -31,12 +31,12 @@ abstract class LFDomainsProvider : DomainsProvider {
      */
     abstract suspend fun obtainData(): String
 
-    override suspend fun provide(): List<String> =
+    override suspend fun provide(): Set<String> =
         obtainData()
             .lineSequence()
             .filter { it.isNotEmpty() && !it.startsWith("//") }
             .map { IDN.toASCII(it.trim().lowercase()) }
-            .toList()
+            .toSet()
 }
 
 /**

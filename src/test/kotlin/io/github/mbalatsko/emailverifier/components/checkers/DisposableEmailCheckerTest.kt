@@ -8,13 +8,13 @@ import kotlin.test.assertTrue
 
 class DisposableEmailCheckerTest {
     private class TestDomainsProvider(
-        private val domains: List<String>,
+        private val domains: Set<String>,
     ) : DomainsProvider {
-        override suspend fun provide(): List<String> = domains
+        override suspend fun provide(): Set<String> = domains
     }
 
     private val testDomains =
-        listOf(
+        setOf(
             "temp-mail.org",
             "mailinator.com",
             "disposable.co",

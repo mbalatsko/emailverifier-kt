@@ -30,7 +30,7 @@ class DomainProvidersTest {
             val result = provider.provide()
 
             assertEquals(
-                listOf("example.com", "example.org", "xn--bcher-kva.de"),
+                setOf("example.com", "example.org", "xn--bcher-kva.de"),
                 result,
             )
         }
@@ -47,6 +47,6 @@ class DomainProvidersTest {
             val provider = OnlineLFDomainsProvider("https://mock.url", client)
 
             val result = provider.provide()
-            assertEquals(listOf("disposable.com", "trashmail.org"), result)
+            assertEquals(setOf("disposable.com", "trashmail.org"), result)
         }
 }

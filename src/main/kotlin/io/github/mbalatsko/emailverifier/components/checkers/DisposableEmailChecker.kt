@@ -19,7 +19,7 @@ class DisposableEmailChecker(
      * Must be called before using [isDisposable].
      */
     suspend fun loadData() {
-        disposableDomainsSet = domainsProvider.provide().toSet()
+        disposableDomainsSet = domainsProvider.provide()
     }
 
     /**

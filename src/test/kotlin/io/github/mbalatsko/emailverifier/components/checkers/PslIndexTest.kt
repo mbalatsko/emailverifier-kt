@@ -8,15 +8,15 @@ import kotlin.test.assertTrue
 
 class PslIndexTest {
     private class TestDomainsProvider(
-        private val rules: List<String>,
+        private val rules: Set<String>,
     ) : DomainsProvider {
-        override suspend fun provide(): List<String> = rules
+        override suspend fun provide(): Set<String> = rules
     }
 
     @Test
     fun `basic registrability with simple suffix rules`() =
         runTest {
-            val rules = listOf("com", "co.uk")
+            val rules = setOf("com", "co.uk")
             val psl = PslIndex(TestDomainsProvider(rules))
             psl.build()
 
@@ -30,7 +30,7 @@ class PslIndexTest {
     @Test
     fun `wildcard rules block second-level but allow deeper domains`() =
         runTest {
-            val rules = listOf("*.ck")
+            val rules = setOf("*.ck")
             val psl = PslIndex(TestDomainsProvider(rules))
             psl.build()
 
@@ -41,7 +41,7 @@ class PslIndexTest {
     @Test
     fun `exception rules override suffix rules`() =
         runTest {
-            val rules = listOf("*.ck", "!pref.ck")
+            val rules = setOf("*.ck", "!pref.ck")
             val psl = PslIndex(TestDomainsProvider(rules))
             psl.build()
 
@@ -55,7 +55,7 @@ class PslIndexTest {
     @Test
     fun `no match means non-registrable`() =
         runTest {
-            val rules = listOf("net")
+            val rules = setOf("net")
             val psl = PslIndex(TestDomainsProvider(rules))
             psl.build()
 
