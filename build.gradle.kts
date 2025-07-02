@@ -46,6 +46,7 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation:3.2.0")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.2.0")
     implementation("io.ktor:ktor-client-cio:3.2.0")
+    implementation("com.squareup.okio:okio:3.13.0")
 
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-client-mock:3.2.0")
