@@ -47,6 +47,10 @@ using a curated list of popular services.
 
 List used: [Github gist](https://gist.github.com/okutbay/5b4974b70673dfdcc21c517632c1f984) by @okutbay 
 
+### 7. **Role-Based Username Detection**
+Detects generic or departmental username (e.g. `info@`, `admin@`, `support@`) by checking against a curated list of common role-based usernames.
+
+List used: https://github.com/mbalatsko/role-based-email-addresses-list (original repo: https://github.com/mixmaxhq/role-based-email-addresses)
 
 ## 🧪 Output: Validation Results
 
@@ -60,7 +64,8 @@ data class EmailValidationResult(
     val mxRecordCheck: CheckResult,
     val disposabilityCheck: CheckResult,
     val gravatarCheck: CheckResult,
-    val freeCheck: CheckResult
+    val freeCheck: CheckResult,
+    val roleBasedUsernameCheck: CheckResult
 ) {
   /**
    * Returns true if all strong indicator checks either passed or were skipped.
@@ -132,8 +137,6 @@ val verifier = EmailVerifier.init(config)
 ## 🔮 Roadmap
 Planned features:
 
-* **Role-Based Username Detection** 
-  * Flag addresses like `info@`, `admin@`, `support@` that are not person-specific
 * **Typo check** suggestions
 * **SMTP Probing**
   * Connect to the target mail server and verify deliverability via the `RCPT TO` SMTP command (without sending email)
