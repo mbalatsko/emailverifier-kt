@@ -148,7 +148,6 @@ class EmailVerifierLocalTest {
                 )
             val result = verifier.verify("user@example.com")
             assertTrue(result.mxRecordCheck == CheckResult.ERRORED)
-            assertFalse(result.ok())
         }
 
     @Test

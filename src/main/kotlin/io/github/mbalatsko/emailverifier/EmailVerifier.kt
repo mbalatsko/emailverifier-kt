@@ -82,10 +82,12 @@ class EmailVerifier(
     private val roleBasedUsernameChecker: RoleBasedUsernameChecker?,
 ) {
     /**
-     * Validates the given email address using configured checks.
+     * Executes a verification check, handling null checkers, preconditions, and errors.
      *
-     * @param email the input email address to validate.
-     * @return a structured [EmailValidationResult] with results for each check.
+     * @param checker The checker instance; if null, the check is skipped.
+     * @param precondition An optional boolean precondition; if false, the check is skipped.
+     * @param action The suspendable lambda representing the actual check logic.
+     * @return The [CheckResult] based on the action's outcome or skipping conditions.
      */
     private suspend fun runCheck(
         checker: Any?,
