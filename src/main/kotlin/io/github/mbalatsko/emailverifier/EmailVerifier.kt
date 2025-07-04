@@ -11,6 +11,8 @@ import io.github.mbalatsko.emailverifier.components.checkers.RoleBasedUsernameCh
 import io.github.mbalatsko.emailverifier.components.providers.OnlineLFDomainsProvider
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 enum class CheckResult {
     PASSED,
@@ -111,66 +113,72 @@ class EmailVerifier(
      * @param email the input email address to validate.
      * @return a structured [EmailValidationResult] with results for each check.
      */
-    suspend fun verify(email: String): EmailValidationResult {
-        val emailParts =
-            try {
-                emailSyntaxChecker.parseEmailParts(email)
-            } catch (_: IllegalArgumentException) {
-                return EmailValidationResult(
+    suspend fun verify(email: String): EmailValidationResult =
+        coroutineScope {
+            val emailParts =
+                try {
+                    emailSyntaxChecker.parseEmailParts(email)
+                } catch (_: IllegalArgumentException) {
+                    return@coroutineScope EmailValidationResult(
+                        email,
+                        CheckResult.FAILED,
+                    )
+                }
+
+            val isUsernameValid = emailSyntaxChecker.isUsernameValid(emailParts.username)
+            val isPlusTagValid = emailSyntaxChecker.isPlusTagValid(emailParts.plusTag)
+            val isHostnameValid = emailSyntaxChecker.isHostnameValid(emailParts.hostname)
+            val syntaxCheck =
+                if (isUsernameValid && isPlusTagValid && isHostnameValid) CheckResult.PASSED else CheckResult.FAILED
+
+            if (syntaxCheck == CheckResult.FAILED) {
+                return@coroutineScope EmailValidationResult(
                     email,
-                    CheckResult.FAILED,
+                    syntaxCheck,
                 )
             }
 
-        val isUsernameValid = emailSyntaxChecker.isUsernameValid(emailParts.username)
-        val isPlusTagValid = emailSyntaxChecker.isPlusTagValid(emailParts.plusTag)
-        val isHostnameValid = emailSyntaxChecker.isHostnameValid(emailParts.hostname)
-        val syntaxCheck =
-            if (isUsernameValid && isPlusTagValid && isHostnameValid) CheckResult.PASSED else CheckResult.FAILED
+            val registrabilityCheck =
+                runCheck(pslIndex) {
+                    pslIndex!!.isHostnameRegistrable(emailParts.hostname)
+                }
+            val disposabilityCheck =
+                runCheck(disposableEmailChecker) {
+                    !disposableEmailChecker!!.isDisposable(emailParts.hostname)
+                }
+            val freeCheck =
+                runCheck(freeChecker) {
+                    !freeChecker!!.isFree(emailParts.hostname)
+                }
+            val roleBasedUsernameCheck =
+                runCheck(roleBasedUsernameChecker, isUsernameValid) {
+                    !roleBasedUsernameChecker!!.isRoleBased(emailParts.username)
+                }
 
-        if (syntaxCheck == CheckResult.FAILED) {
-            return EmailValidationResult(
+            val mxRecordCheck =
+                async {
+                    runCheck(mxRecordChecker) {
+                        mxRecordChecker!!.isPresent(emailParts.hostname)
+                    }
+                }
+            val gravatarCheck =
+                async {
+                    runCheck(gravatarChecker, isUsernameValid) {
+                        gravatarChecker!!.hasGravatar("${emailParts.username}@${emailParts.hostname}")
+                    }
+                }
+
+            EmailValidationResult(
                 email,
                 syntaxCheck,
+                registrabilityCheck,
+                mxRecordCheck.await(),
+                disposabilityCheck,
+                gravatarCheck.await(),
+                freeCheck,
+                roleBasedUsernameCheck,
             )
         }
-
-        val registrabilityCheck =
-            runCheck(pslIndex) {
-                pslIndex!!.isHostnameRegistrable(emailParts.hostname)
-            }
-        val mxRecordCheck =
-            runCheck(mxRecordChecker) {
-                mxRecordChecker!!.isPresent(emailParts.hostname)
-            }
-        val disposabilityCheck =
-            runCheck(disposableEmailChecker) {
-                !disposableEmailChecker!!.isDisposable(emailParts.hostname)
-            }
-        val gravatarCheck =
-            runCheck(gravatarChecker) {
-                gravatarChecker!!.hasGravatar("${emailParts.username}@${emailParts.hostname}")
-            }
-        val freeCheck =
-            runCheck(freeChecker) {
-                !freeChecker!!.isFree(emailParts.hostname)
-            }
-        val roleBasedUsernameCheck =
-            runCheck(roleBasedUsernameChecker, isUsernameValid) {
-                !roleBasedUsernameChecker!!.isRoleBased(emailParts.username)
-            }
-
-        return EmailValidationResult(
-            email,
-            syntaxCheck,
-            registrabilityCheck,
-            mxRecordCheck,
-            disposabilityCheck,
-            gravatarCheck,
-            freeCheck,
-            roleBasedUsernameCheck,
-        )
-    }
 
     companion object {
         /**
@@ -181,64 +189,69 @@ class EmailVerifier(
          * @param config the configuration specifying which checks to enable and which URLs to use.
          * @return an initialized [EmailVerifier] ready for use.
          */
-        suspend fun init(config: EmailVerifierConfig = EmailVerifierConfig()): EmailVerifier {
-            val httpClient = config.httpClient ?: HttpClient(CIO)
-            val emailSyntaxChecker = EmailSyntaxChecker()
+        suspend fun init(config: EmailVerifierConfig = EmailVerifierConfig()): EmailVerifier =
+            coroutineScope {
+                val httpClient = config.httpClient ?: HttpClient(CIO)
+                val emailSyntaxChecker = EmailSyntaxChecker()
 
-            val pslIndex =
-                if (config.enableRegistrabilityCheck) {
-                    PslIndex.init(OnlineLFDomainsProvider(config.pslURL, httpClient))
-                } else {
-                    null
-                }
+                val pslIndex =
+                    if (config.enableRegistrabilityCheck) {
+                        async { PslIndex.init(OnlineLFDomainsProvider(config.pslURL, httpClient)) }
+                    } else {
+                        null
+                    }
 
-            val mxRecordChecker =
-                if (config.enableMxRecordCheck) {
-                    MxRecordChecker(GoogleDoHLookupBackend(httpClient, config.dohServerEndpoint))
-                } else {
-                    null
-                }
+                val disposableEmailChecker =
+                    if (config.enableDisposabilityCheck) {
+                        async {
+                            DisposableEmailChecker.init(
+                                OnlineLFDomainsProvider(config.disposableDomainsListUrl, httpClient),
+                            )
+                        }
+                    } else {
+                        null
+                    }
 
-            val disposableEmailChecker =
-                if (config.enableDisposabilityCheck) {
-                    DisposableEmailChecker.init(
-                        OnlineLFDomainsProvider(config.disposableDomainsListUrl, httpClient),
-                    )
-                } else {
-                    null
-                }
+                val freeChecker =
+                    if (config.enableFreeCheck) {
+                        async { FreeChecker.init(OnlineLFDomainsProvider(config.freeEmailsListUrl, httpClient)) }
+                    } else {
+                        null
+                    }
 
-            val gravatarChecker =
-                if (config.enableGravatarCheck) {
-                    GravatarChecker(httpClient)
-                } else {
-                    null
-                }
+                val roleBasedUsernameChecker =
+                    if (config.enableRoleBasedUsernameCheck) {
+                        async {
+                            RoleBasedUsernameChecker.init(OnlineLFDomainsProvider(config.roleBasedUsernamesListUrl, httpClient))
+                        }
+                    } else {
+                        null
+                    }
 
-            val freeChecker =
-                if (config.enableFreeCheck) {
-                    FreeChecker.init(OnlineLFDomainsProvider(config.freeEmailsListUrl, httpClient))
-                } else {
-                    null
-                }
+                val mxRecordChecker =
+                    if (config.enableMxRecordCheck) {
+                        MxRecordChecker(GoogleDoHLookupBackend(httpClient, config.dohServerEndpoint))
+                    } else {
+                        null
+                    }
 
-            val roleBasedUsernameChecker =
-                if (config.enableRoleBasedUsernameCheck) {
-                    RoleBasedUsernameChecker.init(OnlineLFDomainsProvider(config.roleBasedUsernamesListUrl, httpClient))
-                } else {
-                    null
-                }
+                val gravatarChecker =
+                    if (config.enableGravatarCheck) {
+                        GravatarChecker(httpClient)
+                    } else {
+                        null
+                    }
 
-            return EmailVerifier(
-                emailSyntaxChecker,
-                pslIndex,
-                mxRecordChecker,
-                disposableEmailChecker,
-                gravatarChecker,
-                freeChecker,
-                roleBasedUsernameChecker,
-            )
-        }
+                EmailVerifier(
+                    emailSyntaxChecker,
+                    pslIndex?.await(),
+                    mxRecordChecker,
+                    disposableEmailChecker?.await(),
+                    gravatarChecker,
+                    freeChecker?.await(),
+                    roleBasedUsernameChecker?.await(),
+                )
+            }
     }
 }
 

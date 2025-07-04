@@ -10,6 +10,13 @@
 
 **EmailVerifier** is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax. It's built with a clear focus: help developers **reliably assess whether a given email is real, meaningful, and worth accepting**.
 
+## ⚡️ Performance
+
+EmailVerifier is designed for high performance and uses Kotlin's coroutines to parallelize I/O operations:
+
+- **Parallel Initialization:** All external data sources (e.g., Public Suffix List, disposable domains) are downloaded concurrently during setup, making initialization significantly faster.
+- **Parallel Verification:** Independent network checks (MX records, Gravatar) are executed concurrently for each email, reducing the verification time.
+
 ## ✅ Features
 
 EmailVerifier performs a layered set of validations:
@@ -155,6 +162,10 @@ val config = EmailVerifierConfig(
 // The verifier will use your client for all network requests
 val verifier = EmailVerifier.init(config)
 ```
+
+### 5. Performance Considerations
+
+The `EmailVerifier.init()` method performs several network requests to download the necessary data for the various checks. To avoid re-downloading this data every time you want to verify an email, it is highly recommended to **create a single instance of the `EmailVerifier` and reuse it throughout the lifecycle of your application**.
 
 ## ⚙️ Powered By
 * `ktor` for asynchronous HTTP
