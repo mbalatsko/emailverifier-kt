@@ -10,6 +10,13 @@
 
 **EmailVerifier** is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax. It's built with a clear focus: help developers **reliably assess whether a given email is real, meaningful, and worth accepting**.
 
+## ⚡️ Performance
+
+EmailVerifier is designed for high performance and uses Kotlin's coroutines to parallelize I/O operations:
+
+- **Parallel Initialization:** All external data sources (e.g., Public Suffix List, disposable domains) are downloaded concurrently during setup, making initialization significantly faster.
+- **Parallel Verification:** Independent network checks (MX records, Gravatar) are executed concurrently for each email, reducing the verification time.
+
 ## ✅ Features
 
 EmailVerifier performs a layered set of validations:
@@ -70,6 +77,7 @@ data class EmailValidationResult(
   /**
    * Returns true if all strong indicator checks either passed or were skipped.
    * Strong indicator checks: syntax, registrability, mx record presence, disposability
+   * Note: mx record presence might return ERRORED, which is not validated 
    */
     fun ok(): Boolean
 }
@@ -78,6 +86,7 @@ data class EmailValidationResult(
 Each check can return:
 - `PASSED` ✅
 - `FAILED` ❌
+- `ERRORED` ⚠️ (if an unexpected error occurred during the check)
 - `SKIPPED` ⏭️ (if not enabled or not applicable)
 
 ## 🚀 Getting Started
@@ -127,6 +136,38 @@ val config = EmailVerifierConfig(
 
 val verifier = EmailVerifier.init(config)
 ```
+
+### 4. Advanced Configuration: Custom HttpClient
+
+For more advanced use cases, such as configuring retries for network requests, you can pass a custom-configured `HttpClient` to the `EmailVerifier`. This gives you full control over the network layer.
+
+Here's an example of how to configure an `HttpClient` with automatic retries using Ktor's `HttpRequestRetry` plugin:
+
+```kotlin
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.*
+
+// Configure an HttpClient with a retry policy
+val customHttpClient = HttpClient(CIO) {
+    install(HttpRequestRetry) {
+        retryOnServerErrors(maxRetries = 3)
+        exponentialDelay()
+    }
+}
+
+// Pass the custom client in the configuration
+val config = EmailVerifierConfig(
+    httpClient = customHttpClient
+)
+
+// The verifier will use your client for all network requests
+val verifier = EmailVerifier.init(config)
+```
+
+### 5. Performance Considerations
+
+The `EmailVerifier.init()` method performs several network requests to download the necessary data for the various checks. To avoid re-downloading this data every time you want to verify an email, it is highly recommended to **create a single instance of the `EmailVerifier` and reuse it throughout the lifecycle of your application**.
 
 ## ⚙️ Powered By
 * `ktor` for asynchronous HTTP

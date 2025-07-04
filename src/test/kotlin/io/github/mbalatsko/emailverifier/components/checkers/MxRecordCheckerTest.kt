@@ -1,11 +1,14 @@
 package io.github.mbalatsko.emailverifier.components.checkers
+import io.github.mbalatsko.emailverifier.VerificationError
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.respondError
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -75,6 +78,21 @@ class GoogleDoHLookupBackendTest {
                     httpClient = mockClient(json),
                 )
             assertFalse(backend.hasMxRecords("example.com"))
+        }
+
+    @Test
+    fun `hasMxRecords throws VerificationError on 5xx error`() =
+        runTest {
+            val mockEngine =
+                MockEngine {
+                    respondError(HttpStatusCode.InternalServerError)
+                }
+            val client = HttpClient(mockEngine)
+            val backend = GoogleDoHLookupBackend(client)
+
+            assertFailsWith<VerificationError> {
+                backend.hasMxRecords("example.com")
+            }
         }
 }
 

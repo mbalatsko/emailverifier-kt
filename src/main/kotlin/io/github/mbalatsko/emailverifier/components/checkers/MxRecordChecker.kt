@@ -1,7 +1,7 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
+import io.github.mbalatsko.emailverifier.VerificationError
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.Serializable
@@ -34,8 +34,8 @@ interface DnsLookupBackend {
  * @property httpClient HTTP client used to get Google-like DoH response from [baseURL]?name=<hostname>&type=MX
  */
 class GoogleDoHLookupBackend(
-    val baseURL: String = GOOGLE_DOH_URL,
-    val httpClient: HttpClient = HttpClient(CIO),
+    private val httpClient: HttpClient,
+    private val baseURL: String = GOOGLE_DOH_URL,
 ) : DnsLookupBackend {
     @Serializable
     private data class Answer(
@@ -56,11 +56,21 @@ class GoogleDoHLookupBackend(
      *
      * @param hostname the domain to query.
      * @return `true` if at least one MX record is found, `false` otherwise.
+     * @throws VerificationError if the request fails or the server returns a 5xx error.
      */
     override suspend fun hasMxRecords(hostname: String): Boolean {
-        val raw = httpClient.get("$baseURL?name=$hostname&type=MX").bodyAsText()
-        val resp = json.decodeFromString<DnsResponse>(raw)
-        return resp.Answer?.any { it.type == MX_TYPE } == true
+        val url = "$baseURL?name=$hostname&type=MX"
+        try {
+            val resp = httpClient.get(url)
+            if (resp.status.value >= 500) {
+                throw VerificationError("DoH server returned error: ${resp.status}")
+            }
+            val raw = resp.bodyAsText()
+            val dnsResponse = json.decodeFromString<DnsResponse>(raw)
+            return dnsResponse.Answer?.any { it.type == MX_TYPE } == true
+        } catch (e: Exception) {
+            throw VerificationError("Failed to connect to DoH server", e)
+        }
     }
 
     companion object {
