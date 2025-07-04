@@ -1,7 +1,6 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
@@ -18,8 +17,8 @@ import okio.ByteString.Companion.encodeUtf8
  * @property httpClient the HTTP client to use for requests (defaults to CIO engine).
  */
 class GravatarChecker(
-    val baseURL: String = GRAVATAR_BASE_URL,
-    val httpClient: HttpClient = HttpClient(CIO),
+    private val httpClient: HttpClient,
+    private val baseURL: String = GRAVATAR_BASE_URL,
 ) {
     /**
      * Determines whether a Gravatar exists for the given email.

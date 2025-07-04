@@ -9,6 +9,8 @@ import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.checkers.RoleBasedUsernameChecker
 import io.github.mbalatsko.emailverifier.components.providers.OnlineLFDomainsProvider
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
 
 enum class CheckResult {
     PASSED,
@@ -185,18 +187,19 @@ class EmailVerifier(
          * @return an initialized [EmailVerifier] ready for use.
          */
         suspend fun init(config: EmailVerifierConfig = EmailVerifierConfig()): EmailVerifier {
+            val httpClient = HttpClient(CIO)
             val emailSyntaxChecker = EmailSyntaxChecker()
 
             val pslIndex =
                 if (config.enableRegistrabilityCheck) {
-                    PslIndex.init(OnlineLFDomainsProvider(config.pslURL))
+                    PslIndex.init(OnlineLFDomainsProvider(config.pslURL, httpClient))
                 } else {
                     null
                 }
 
             val mxRecordChecker =
                 if (config.enableMxRecordCheck) {
-                    MxRecordChecker(GoogleDoHLookupBackend(config.dohServerEndpoint))
+                    MxRecordChecker(GoogleDoHLookupBackend(httpClient, config.dohServerEndpoint))
                 } else {
                     null
                 }
@@ -204,7 +207,7 @@ class EmailVerifier(
             val disposableEmailChecker =
                 if (config.enableDisposabilityCheck) {
                     DisposableEmailChecker.init(
-                        OnlineLFDomainsProvider(config.disposableDomainsListUrl),
+                        OnlineLFDomainsProvider(config.disposableDomainsListUrl, httpClient),
                     )
                 } else {
                     null
@@ -212,21 +215,21 @@ class EmailVerifier(
 
             val gravatarChecker =
                 if (config.enableGravatarCheck) {
-                    GravatarChecker()
+                    GravatarChecker(httpClient)
                 } else {
                     null
                 }
 
             val freeChecker =
                 if (config.enableFreeCheck) {
-                    FreeChecker.init(OnlineLFDomainsProvider(config.freeEmailsListUrl))
+                    FreeChecker.init(OnlineLFDomainsProvider(config.freeEmailsListUrl, httpClient))
                 } else {
                     null
                 }
 
             val roleBasedUsernameChecker =
                 if (config.enableRoleBasedUsernameCheck) {
-                    RoleBasedUsernameChecker.init(OnlineLFDomainsProvider(config.roleBasedUsernamesListUrl))
+                    RoleBasedUsernameChecker.init(OnlineLFDomainsProvider(config.roleBasedUsernamesListUrl, httpClient))
                 } else {
                     null
                 }

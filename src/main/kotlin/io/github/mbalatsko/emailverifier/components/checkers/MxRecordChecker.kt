@@ -1,7 +1,6 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.Serializable
@@ -34,8 +33,8 @@ interface DnsLookupBackend {
  * @property httpClient HTTP client used to get Google-like DoH response from [baseURL]?name=<hostname>&type=MX
  */
 class GoogleDoHLookupBackend(
-    val baseURL: String = GOOGLE_DOH_URL,
-    val httpClient: HttpClient = HttpClient(CIO),
+    private val httpClient: HttpClient,
+    private val baseURL: String = GOOGLE_DOH_URL,
 ) : DnsLookupBackend {
     @Serializable
     private data class Answer(
