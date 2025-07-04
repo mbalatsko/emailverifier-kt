@@ -8,9 +8,7 @@ import io.github.mbalatsko.emailverifier.components.checkers.GravatarChecker
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.checkers.RoleBasedUsernameChecker
-import io.github.mbalatsko.emailverifier.components.providers.OnlineLFDomainsProvider
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
@@ -70,7 +68,6 @@ data class EmailValidationResult(
  * MX record verification, detection of disposable email domains, gravatar existence check,
  * check against list of known free‐email providers, check against list of role-based usernames.
  *
- * Each validation stage can be enabled/disabled via [EmailVerifierConfig].
  */
 class EmailVerifier(
     private val emailSyntaxChecker: EmailSyntaxChecker,
@@ -170,112 +167,4 @@ class EmailVerifier(
                 roleBasedUsernameCheck,
             )
         }
-
-    companion object {
-        /**
-         * Initializes a new [EmailVerifier] with the specified configuration.
-         *
-         * Downloads external data as required (PSL, disposable lists) via HTTP.
-         *
-         * @param config the configuration specifying which checks to enable and which URLs to use.
-         * @return an initialized [EmailVerifier] ready for use.
-         */
-        suspend fun init(config: EmailVerifierConfig = EmailVerifierConfig()): EmailVerifier =
-            coroutineScope {
-                val httpClient = config.httpClient ?: HttpClient(CIO)
-                val emailSyntaxChecker = EmailSyntaxChecker()
-
-                val pslIndex =
-                    if (config.enableRegistrabilityCheck) {
-                        async { PslIndex.init(OnlineLFDomainsProvider(config.pslURL, httpClient)) }
-                    } else {
-                        null
-                    }
-
-                val disposableEmailChecker =
-                    if (config.enableDisposabilityCheck) {
-                        async {
-                            DisposableEmailChecker.init(
-                                OnlineLFDomainsProvider(config.disposableDomainsListUrl, httpClient),
-                            )
-                        }
-                    } else {
-                        null
-                    }
-
-                val freeChecker =
-                    if (config.enableFreeCheck) {
-                        async { FreeChecker.init(OnlineLFDomainsProvider(config.freeEmailsListUrl, httpClient)) }
-                    } else {
-                        null
-                    }
-
-                val roleBasedUsernameChecker =
-                    if (config.enableRoleBasedUsernameCheck) {
-                        async {
-                            RoleBasedUsernameChecker.init(OnlineLFDomainsProvider(config.roleBasedUsernamesListUrl, httpClient))
-                        }
-                    } else {
-                        null
-                    }
-
-                val mxRecordChecker =
-                    if (config.enableMxRecordCheck) {
-                        MxRecordChecker(GoogleDoHLookupBackend(httpClient, config.dohServerEndpoint))
-                    } else {
-                        null
-                    }
-
-                val gravatarChecker =
-                    if (config.enableGravatarCheck) {
-                        GravatarChecker(httpClient)
-                    } else {
-                        null
-                    }
-
-                EmailVerifier(
-                    emailSyntaxChecker,
-                    pslIndex?.await(),
-                    mxRecordChecker,
-                    disposableEmailChecker?.await(),
-                    gravatarChecker,
-                    freeChecker?.await(),
-                    roleBasedUsernameChecker?.await(),
-                )
-            }
-    }
 }
-
-/**
- * Configuration options for [EmailVerifier] initialization.
- *
- * Each check can be toggled independently. URLs for required external lists
- * (e.g. PSL, disposable domains) and DoH endpoint can also be customized.
- *
- * @property enableRegistrabilityCheck enables use of the Public Suffix List.
- * @property pslURL the source URL for the PSL (Public suffix list).
- * @property enableMxRecordCheck enables DNS MX record lookups.
- * @property dohServerEndpoint the DoH resolver endpoint (used by MX check). See [GoogleDoHLookupBackend] for expected URL format and server behaviour.
- * @property enableDisposabilityCheck enables detection of disposable domains.
- * @property disposableDomainsListUrl the URL of the domain list for disposability check.
- * @property enableGravatarCheck enables Gravatar presence check
- * @property enableFreeCheck enables check against list of known free‐email providers.
- * @property freeEmailsListUrl the URL of the domain list for free-email provider check.
- * @property enableRoleBasedUsernameCheck enables check against list of role-based usernames.
- * @property roleBasedUsernamesListUrl the URL of role-based usernames list.
- * @property httpClient optional custom HTTP client.
- */
-data class EmailVerifierConfig(
-    val enableRegistrabilityCheck: Boolean = true,
-    val pslURL: String = PslIndex.MOZILLA_PSL_URL,
-    val enableMxRecordCheck: Boolean = true,
-    val dohServerEndpoint: String = GoogleDoHLookupBackend.GOOGLE_DOH_URL,
-    val enableDisposabilityCheck: Boolean = true,
-    val disposableDomainsListUrl: String = DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_URL,
-    val enableGravatarCheck: Boolean = true,
-    val enableFreeCheck: Boolean = true,
-    val freeEmailsListUrl: String = FreeChecker.FREE_EMAILS_LIST_URL,
-    val enableRoleBasedUsernameCheck: Boolean = true,
-    val roleBasedUsernamesListUrl: String = RoleBasedUsernameChecker.ROLE_BASED_USERNAMES_LIST_URL,
-    val httpClient: HttpClient? = null,
-)

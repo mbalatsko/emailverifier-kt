@@ -114,7 +114,7 @@ Also available on [Github Packages](https://github.com/mbalatsko/emailverifier-k
 ### 2. Basic usage
 
 ```kotlin
-val verifier = EmailVerifier.init()
+val verifier =  emailVerifier { }
 
 val result = verifier.verify("john.doe@example.com")
 
@@ -128,13 +128,14 @@ if (result.ok()) {
 ### 3. Custom configuration
 
 ```kotlin
-val config = EmailVerifierConfig(
-    enableRegistrabilityCheck = true,
-    enableMxRecordCheck = true,
-    enableDisposabilityCheck = false
-)
-
-val verifier = EmailVerifier.init(config)
+val verifier = emailVerifier {
+    registrability {
+        pslURL = "my.custom.domain/psl.dat"
+    }
+    mxRecord {
+        enabled = false
+    }
+}
 ```
 
 ### 4. Advanced Configuration: Custom HttpClient
@@ -157,17 +158,16 @@ val customHttpClient = HttpClient(CIO) {
 }
 
 // Pass the custom client in the configuration
-val config = EmailVerifierConfig(
+val verifier = emailVerifier {
     httpClient = customHttpClient
-)
-
-// The verifier will use your client for all network requests
-val verifier = EmailVerifier.init(config)
+}
 ```
 
 ### 5. Performance Considerations
 
-The `EmailVerifier.init()` method performs several network requests to download the necessary data for the various checks. To avoid re-downloading this data every time you want to verify an email, it is highly recommended to **create a single instance of the `EmailVerifier` and reuse it throughout the lifecycle of your application**.
+The `emailVerifier {}` call performs several network requests to download the necessary data for the various checks. 
+To avoid re-downloading this data every time you want to verify an email, it is highly recommended to **create a single 
+instance of the `EmailVerifier` and reuse it throughout the lifecycle of your application**.
 
 ## ⚙️ Powered By
 * `ktor` for asynchronous HTTP
