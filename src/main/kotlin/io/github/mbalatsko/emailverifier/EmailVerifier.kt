@@ -54,17 +54,13 @@ data class EmailValidationResult(
     /**
      * Returns true if all strong indicator checks either passed or were skipped.
      * Strong indicator checks: syntax, registrability, mx record presence, disposability
+     * Note: mx record presence might return ERRORED, which is not validated
      */
     fun ok(): Boolean =
         syntaxCheck != CheckResult.FAILED &&
             registrabilityCheck != CheckResult.FAILED &&
             mxRecordCheck != CheckResult.FAILED &&
-            disposabilityCheck != CheckResult.FAILED &&
-            // ERRORED is not a failure condition for ok()
-            syntaxCheck != CheckResult.ERRORED &&
-            registrabilityCheck != CheckResult.ERRORED &&
-            mxRecordCheck != CheckResult.ERRORED &&
-            disposabilityCheck != CheckResult.ERRORED
+            disposabilityCheck != CheckResult.FAILED
 }
 
 /**
