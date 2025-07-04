@@ -129,23 +129,16 @@ class EmailVerifier(
             val syntaxCheck =
                 if (isUsernameValid && isPlusTagValid && isHostnameValid) CheckResult.PASSED else CheckResult.FAILED
 
-            if (syntaxCheck == CheckResult.FAILED) {
-                return@coroutineScope EmailValidationResult(
-                    email,
-                    syntaxCheck,
-                )
-            }
-
             val registrabilityCheck =
-                runCheck(pslIndex) {
+                runCheck(pslIndex, isHostnameValid) {
                     pslIndex!!.isHostnameRegistrable(emailParts.hostname)
                 }
             val disposabilityCheck =
-                runCheck(disposableEmailChecker) {
+                runCheck(disposableEmailChecker, isHostnameValid) {
                     !disposableEmailChecker!!.isDisposable(emailParts.hostname)
                 }
             val freeCheck =
-                runCheck(freeChecker) {
+                runCheck(freeChecker, isHostnameValid) {
                     !freeChecker!!.isFree(emailParts.hostname)
                 }
             val roleBasedUsernameCheck =
@@ -155,13 +148,13 @@ class EmailVerifier(
 
             val mxRecordCheck =
                 async {
-                    runCheck(mxRecordChecker) {
+                    runCheck(mxRecordChecker, isHostnameValid) {
                         mxRecordChecker!!.isPresent(emailParts.hostname)
                     }
                 }
             val gravatarCheck =
                 async {
-                    runCheck(gravatarChecker, isUsernameValid) {
+                    runCheck(gravatarChecker, isUsernameValid && isHostnameValid) {
                         gravatarChecker!!.hasGravatar("${emailParts.username}@${emailParts.hostname}")
                     }
                 }
