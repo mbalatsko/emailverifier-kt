@@ -129,6 +129,28 @@ class EmailVerifierLocalTest {
             assertTrue(result.roleBasedUsernameCheck == CheckResult.FAILED)
         }
 
+    private class ErrorDnsBackend : DnsLookupBackend {
+        override suspend fun hasMxRecords(hostname: String): Boolean = throw VerificationError("test error")
+    }
+
+    @Test
+    fun `integration returns errored`() =
+        runTest {
+            val verifier =
+                EmailVerifier(
+                    emailSyntaxChecker = EmailSyntaxChecker(),
+                    pslIndex = null,
+                    mxRecordChecker = MxRecordChecker(ErrorDnsBackend()),
+                    disposableEmailChecker = null,
+                    gravatarChecker = null,
+                    freeChecker = null,
+                    roleBasedUsernameChecker = null,
+                )
+            val result = verifier.verify("user@example.com")
+            assertTrue(result.mxRecordCheck == CheckResult.ERRORED)
+            assertFalse(result.ok())
+        }
+
     @Test
     fun `integration skips disabled checks`() =
         runTest {

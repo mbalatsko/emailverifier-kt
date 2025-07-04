@@ -128,6 +128,34 @@ val config = EmailVerifierConfig(
 val verifier = EmailVerifier.init(config)
 ```
 
+### 4. Advanced Configuration: Custom HttpClient
+
+For more advanced use cases, such as configuring retries for network requests, you can pass a custom-configured `HttpClient` to the `EmailVerifier`. This gives you full control over the network layer.
+
+Here's an example of how to configure an `HttpClient` with automatic retries using Ktor's `HttpRequestRetry` plugin:
+
+```kotlin
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.*
+
+// Configure an HttpClient with a retry policy
+val customHttpClient = HttpClient(CIO) {
+    install(HttpRequestRetry) {
+        retryOnServerErrors(maxRetries = 3)
+        exponentialDelay()
+    }
+}
+
+// Pass the custom client in the configuration
+val config = EmailVerifierConfig(
+    httpClient = customHttpClient
+)
+
+// The verifier will use your client for all network requests
+val verifier = EmailVerifier.init(config)
+```
+
 ## ⚙️ Powered By
 * `ktor` for asynchronous HTTP
 * `java.net.IDN` for domain normalization (punycode)

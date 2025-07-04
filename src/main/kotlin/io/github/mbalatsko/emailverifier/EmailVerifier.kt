@@ -16,7 +16,16 @@ enum class CheckResult {
     PASSED,
     FAILED,
     SKIPPED,
+    ERRORED,
 }
+
+/**
+ * Custom exception to signal that a verification check failed due to an external error.
+ */
+class VerificationError(
+    message: String,
+    cause: Throwable? = null,
+) : RuntimeException(message, cause)
 
 /**
  * Aggregated result of a full email validation process.
@@ -48,7 +57,12 @@ data class EmailValidationResult(
         syntaxCheck != CheckResult.FAILED &&
             registrabilityCheck != CheckResult.FAILED &&
             mxRecordCheck != CheckResult.FAILED &&
-            disposabilityCheck != CheckResult.FAILED
+            disposabilityCheck != CheckResult.FAILED &&
+            // ERRORED is not a failure condition for ok()
+            syntaxCheck != CheckResult.ERRORED &&
+            registrabilityCheck != CheckResult.ERRORED &&
+            mxRecordCheck != CheckResult.ERRORED &&
+            disposabilityCheck != CheckResult.ERRORED
 }
 
 /**
@@ -75,6 +89,28 @@ class EmailVerifier(
      * @param email the input email address to validate.
      * @return a structured [EmailValidationResult] with results for each check.
      */
+    private suspend fun runCheck(
+        checker: Any?,
+        precondition: Boolean = true,
+        action: suspend () -> Boolean,
+    ): CheckResult =
+        try {
+            when {
+                checker == null -> CheckResult.SKIPPED
+                !precondition -> CheckResult.SKIPPED
+                action() -> CheckResult.PASSED
+                else -> CheckResult.FAILED
+            }
+        } catch (e: VerificationError) {
+            CheckResult.ERRORED
+        }
+
+    /**
+     * Validates the given email address using configured checks.
+     *
+     * @param email the input email address to validate.
+     * @return a structured [EmailValidationResult] with results for each check.
+     */
     suspend fun verify(email: String): EmailValidationResult {
         val emailParts =
             try {
@@ -92,77 +128,36 @@ class EmailVerifier(
         val syntaxCheck =
             if (isUsernameValid && isPlusTagValid && isHostnameValid) CheckResult.PASSED else CheckResult.FAILED
 
+        if (syntaxCheck == CheckResult.FAILED) {
+            return EmailValidationResult(
+                email,
+                syntaxCheck,
+            )
+        }
+
         val registrabilityCheck =
-            if (pslIndex != null &&
-                isHostnameValid &&
-                pslIndex.isHostnameRegistrable(emailParts.hostname)
-            ) {
-                CheckResult.PASSED
-            } else if (pslIndex == null || !isHostnameValid) {
-                CheckResult.SKIPPED
-            } else {
-                CheckResult.FAILED
+            runCheck(pslIndex) {
+                pslIndex!!.isHostnameRegistrable(emailParts.hostname)
             }
-
         val mxRecordCheck =
-            if (mxRecordChecker != null &&
-                isHostnameValid &&
-                mxRecordChecker.isPresent(emailParts.hostname)
-            ) {
-                CheckResult.PASSED
-            } else if (mxRecordChecker == null || !isHostnameValid) {
-                CheckResult.SKIPPED
-            } else {
-                CheckResult.FAILED
+            runCheck(mxRecordChecker) {
+                mxRecordChecker!!.isPresent(emailParts.hostname)
             }
-
         val disposabilityCheck =
-            if (disposableEmailChecker != null &&
-                isHostnameValid &&
-                !disposableEmailChecker.isDisposable(emailParts.hostname)
-            ) {
-                CheckResult.PASSED
-            } else if (disposableEmailChecker == null || !isHostnameValid) {
-                CheckResult.SKIPPED
-            } else {
-                CheckResult.FAILED
+            runCheck(disposableEmailChecker) {
+                !disposableEmailChecker!!.isDisposable(emailParts.hostname)
             }
-
         val gravatarCheck =
-            if (gravatarChecker != null &&
-                isHostnameValid &&
-                isUsernameValid &&
-                gravatarChecker.hasGravatar("${emailParts.username}@${emailParts.hostname}")
-            ) {
-                CheckResult.PASSED
-            } else if (gravatarChecker == null || !isHostnameValid || !isUsernameValid) {
-                CheckResult.SKIPPED
-            } else {
-                CheckResult.FAILED
+            runCheck(gravatarChecker) {
+                gravatarChecker!!.hasGravatar("${emailParts.username}@${emailParts.hostname}")
             }
-
         val freeCheck =
-            if (freeChecker != null &&
-                isHostnameValid &&
-                !freeChecker.isFree(emailParts.hostname)
-            ) {
-                CheckResult.PASSED
-            } else if (freeChecker == null || !isHostnameValid) {
-                CheckResult.SKIPPED
-            } else {
-                CheckResult.FAILED
+            runCheck(freeChecker) {
+                !freeChecker!!.isFree(emailParts.hostname)
             }
-
         val roleBasedUsernameCheck =
-            if (roleBasedUsernameChecker != null &&
-                isUsernameValid &&
-                !roleBasedUsernameChecker.isRoleBased(emailParts.username)
-            ) {
-                CheckResult.PASSED
-            } else if (roleBasedUsernameChecker == null || !isUsernameValid) {
-                CheckResult.SKIPPED
-            } else {
-                CheckResult.FAILED
+            runCheck(roleBasedUsernameChecker, isUsernameValid) {
+                !roleBasedUsernameChecker!!.isRoleBased(emailParts.username)
             }
 
         return EmailValidationResult(
@@ -187,7 +182,7 @@ class EmailVerifier(
          * @return an initialized [EmailVerifier] ready for use.
          */
         suspend fun init(config: EmailVerifierConfig = EmailVerifierConfig()): EmailVerifier {
-            val httpClient = HttpClient(CIO)
+            val httpClient = config.httpClient ?: HttpClient(CIO)
             val emailSyntaxChecker = EmailSyntaxChecker()
 
             val pslIndex =
@@ -264,6 +259,7 @@ class EmailVerifier(
  * @property freeEmailsListUrl the URL of the domain list for free-email provider check.
  * @property enableRoleBasedUsernameCheck enables check against list of role-based usernames.
  * @property roleBasedUsernamesListUrl the URL of role-based usernames list.
+ * @property httpClient optional custom HTTP client.
  */
 data class EmailVerifierConfig(
     val enableRegistrabilityCheck: Boolean = true,
@@ -277,4 +273,5 @@ data class EmailVerifierConfig(
     val freeEmailsListUrl: String = FreeChecker.FREE_EMAILS_LIST_URL,
     val enableRoleBasedUsernameCheck: Boolean = true,
     val roleBasedUsernamesListUrl: String = RoleBasedUsernameChecker.ROLE_BASED_USERNAMES_LIST_URL,
+    val httpClient: HttpClient? = null,
 )
