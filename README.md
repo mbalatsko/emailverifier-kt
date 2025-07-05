@@ -114,7 +114,7 @@ Also available on [Github Packages](https://github.com/mbalatsko/emailverifier-k
 ### 2. Basic usage
 
 ```kotlin
-val verifier = EmailVerifier.init()
+val verifier =  emailVerifier { }
 
 val result = verifier.verify("john.doe@example.com")
 
@@ -128,13 +128,35 @@ if (result.ok()) {
 ### 3. Custom configuration
 
 ```kotlin
-val config = EmailVerifierConfig(
-    enableRegistrabilityCheck = true,
-    enableMxRecordCheck = true,
-    enableDisposabilityCheck = false
-)
+val verifier = emailVerifier {
+    // All checks are enabled by default unless specified otherwise.
 
-val verifier = EmailVerifier.init(config)
+    registrability {
+        enabled = true // Explicitly enable (default is true)
+        pslUrl  = "https://my.custom.domain/public_suffix_list.dat" // Custom PSL URL
+    }
+    mxRecord {
+        enabled = false // Disable MX record checks
+        // dohServerEndpoint = "https://my.custom.doh/dns-query" // Custom DoH endpoint if enabled
+    }
+    disposability {
+        enabled = true // Explicitly enable (default is true)
+        domainsListUrl = "https://my.custom.domain/disposable_domains.txt" // Custom disposable domains list
+    }
+    gravatar {
+        enabled = true // Explicitly enable (default is true)
+    }
+    free {
+        enabled = false // Disable free email provider checks
+        // domainsListUrl = "https://my.custom.domain/free_emails.txt" // Custom free emails list if enabled
+    }
+    roleBasedUsername {
+        enabled = true // Explicitly enable (default is true)
+        usernamesListUrl = "https://my.custom.domain/role_based_usernames.txt" // Custom role-based usernames list
+    }
+    // You can also provide a custom HttpClient for all network operations:
+    // httpClient = customHttpClient
+}
 ```
 
 ### 4. Advanced Configuration: Custom HttpClient
@@ -157,17 +179,16 @@ val customHttpClient = HttpClient(CIO) {
 }
 
 // Pass the custom client in the configuration
-val config = EmailVerifierConfig(
+val verifier = emailVerifier {
     httpClient = customHttpClient
-)
-
-// The verifier will use your client for all network requests
-val verifier = EmailVerifier.init(config)
+}
 ```
 
 ### 5. Performance Considerations
 
-The `EmailVerifier.init()` method performs several network requests to download the necessary data for the various checks. To avoid re-downloading this data every time you want to verify an email, it is highly recommended to **create a single instance of the `EmailVerifier` and reuse it throughout the lifecycle of your application**.
+The `emailVerifier {}` call performs several network requests to download the necessary data for the various checks. 
+To avoid re-downloading this data every time you want to verify an email, it is highly recommended to **create a single 
+instance of the `EmailVerifier` and reuse it throughout the lifecycle of your application**.
 
 ## ⚙️ Powered By
 * `ktor` for asynchronous HTTP

@@ -153,14 +153,15 @@ class EmailVerifierLocalTest {
     @Test
     fun `integration skips disabled checks`() =
         runTest {
-            val config =
-                EmailVerifierConfig(
-                    enableRegistrabilityCheck = false,
-                    enableMxRecordCheck = false,
-                    enableDisposabilityCheck = false,
-                    enableFreeCheck = false,
-                )
-            val verifier = EmailVerifier.init(config)
+            val verifier =
+                emailVerifier {
+                    registrability { enabled = false }
+                    mxRecord { enabled = false }
+                    disposability { enabled = false }
+                    free { enabled = false }
+                    gravatar { enabled = false }
+                    roleBasedUsername { enabled = false }
+                }
             val result = verifier.verify("user@anydomain.test")
             // Syntax still runs
             assertTrue(result.syntaxCheck == CheckResult.PASSED)
@@ -174,7 +175,7 @@ class EmailVerifierLocalTest {
 }
 
 class EmailVerifierOnlineTest {
-    val onlineEmailVerifier = runBlocking { EmailVerifier.init() }
+    val onlineEmailVerifier = runBlocking { emailVerifier { } }
 
     @Test
     fun `integration passes all checks online, but fails gravatar and free`() =
