@@ -3,12 +3,10 @@ package io.github.mbalatsko.emailverifier
 import io.github.mbalatsko.emailverifier.components.checkers.DisposableEmailChecker
 import io.github.mbalatsko.emailverifier.components.checkers.EmailSyntaxChecker
 import io.github.mbalatsko.emailverifier.components.checkers.FreeChecker
-import io.github.mbalatsko.emailverifier.components.checkers.GoogleDoHLookupBackend
 import io.github.mbalatsko.emailverifier.components.checkers.GravatarChecker
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.checkers.RoleBasedUsernameChecker
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 

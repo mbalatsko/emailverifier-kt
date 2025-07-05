@@ -19,7 +19,7 @@ import kotlinx.coroutines.coroutineScope
  */
 data class RegistrabilityConfig(
     val enabled: Boolean = true,
-    val pslURL: String = PslIndex.MOZILLA_PSL_URL,
+    val pslUrl: String = PslIndex.MOZILLA_PSL_URL,
 )
 
 /**
@@ -27,9 +27,9 @@ data class RegistrabilityConfig(
  */
 class RegistrabilityConfigBuilder {
     var enabled: Boolean = true
-    var pslURL: String = PslIndex.MOZILLA_PSL_URL
+    var pslUrl: String = PslIndex.MOZILLA_PSL_URL
 
-    internal fun build() = RegistrabilityConfig(enabled, pslURL)
+    internal fun build() = RegistrabilityConfig(enabled, pslUrl)
 }
 
 /**
@@ -171,7 +171,7 @@ class EmailVerifierDslBuilder {
 
             val pslIndex =
                 if (registrabilityConfig.enabled) {
-                    async { PslIndex.init(OnlineLFDomainsProvider(registrabilityConfig.pslURL, currentHttpClient)) }
+                    async { PslIndex.init(OnlineLFDomainsProvider(registrabilityConfig.pslUrl, currentHttpClient)) }
                 } else {
                     null
                 }

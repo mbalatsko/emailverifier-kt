@@ -129,12 +129,33 @@ if (result.ok()) {
 
 ```kotlin
 val verifier = emailVerifier {
+    // All checks are enabled by default unless specified otherwise.
+
     registrability {
-        pslURL = "my.custom.domain/psl.dat"
+        enabled = true // Explicitly enable (default is true)
+        pslUrl  = "https://my.custom.domain/public_suffix_list.dat" // Custom PSL URL
     }
     mxRecord {
-        enabled = false
+        enabled = false // Disable MX record checks
+        // dohServerEndpoint = "https://my.custom.doh/dns-query" // Custom DoH endpoint if enabled
     }
+    disposability {
+        enabled = true // Explicitly enable (default is true)
+        domainsListUrl = "https://my.custom.domain/disposable_domains.txt" // Custom disposable domains list
+    }
+    gravatar {
+        enabled = true // Explicitly enable (default is true)
+    }
+    free {
+        enabled = false // Disable free email provider checks
+        // domainsListUrl = "https://my.custom.domain/free_emails.txt" // Custom free emails list if enabled
+    }
+    roleBasedUsername {
+        enabled = true // Explicitly enable (default is true)
+        usernamesListUrl = "https://my.custom.domain/role_based_usernames.txt" // Custom role-based usernames list
+    }
+    // You can also provide a custom HttpClient for all network operations:
+    // httpClient = customHttpClient
 }
 ```
 
