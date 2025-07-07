@@ -60,13 +60,13 @@ Detects generic or departmental username (e.g. `info@`, `admin@`, `support@`) by
 List used: https://github.com/mbalatsko/role-based-email-addresses-list (original repo: https://github.com/mixmaxhq/role-based-email-addresses)
 
 ### 8. **Offline Mode**
-For environments without internet access, EmailVerifier can run in a fully offline mode. When enabled, it uses bundled 
+For environments without internet access, `EmailVerifier` can run in a fully **offline** mode. When enabled, it uses bundled 
 data for checks that support it (Syntax, Registrability, Disposability, Free Email, and Role-Based Username) and automatically 
 disables checks that require network access (MX Record, Gravatar). 
 
-You can also configure offline mode for each check individually.
+You can also configure **offline mode** for each check **individually**.
 
-The bundled data is automatically updated daily via a GitHub Actions workflow.
+The bundled data is automatically updated **daily** via a GitHub Actions workflow.
 
 ## 🧪 Output: Validation Results
 
@@ -171,7 +171,8 @@ val verifier = emailVerifier {
 
 ### 4. Offline Mode
 
-To enable offline mode for all checks, set the `allOffline` property to `true`. This will use bundled data for all supported checks and disable network-dependent checks.
+To enable offline mode for all checks, set the `allOffline` property to `true`. This will use bundled data for all 
+supported checks and disable network-dependent checks.
 
 ```kotlin
 val verifier = emailVerifier {

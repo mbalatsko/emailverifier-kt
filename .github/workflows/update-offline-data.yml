@@ -23,7 +23,7 @@ jobs:
           if git diff --quiet; then
             echo "✔ No updates needed"
           else
-            git add list.txt
+            git add .
             DATE=$(date -u +'%Y-%m-%d')
             git commit -m "Automated daily update of offline data: $DATE"
             git push
