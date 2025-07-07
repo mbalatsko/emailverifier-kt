@@ -46,7 +46,7 @@
         </button>
         <div class="navigation-controls--break ui-kit_mobile-only"></div>
         <div class="library-version" id="library-version">
-0.3        </div>
+0.4        </div>
         <div class="navigation-controls">
         <div class="filter-section filter-section_loading" id="filter-section">
                 <button class="platform-tag platform-selector jvm-like" data-active=""
@@ -108,24 +108,24 @@
   <div class="breadcrumbs"><a href="../../../index.html">emailverifier-kt</a><span class="delimiter">/</span><a href="../index.html">io.github.mbalatsko.emailverifier.components.checkers</a><span class="delimiter">/</span><span class="current">GoogleDoHLookupBackend</span></div>
   <div class="cover ">
     <h1 class="cover"><span>Google</span><wbr></wbr><span>Do</span><wbr></wbr><span>HLookup</span><wbr></wbr><span><span>Backend</span></span></h1>
-    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">class </span><a href="index.html">GoogleDoHLookupBackend</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">val </span>baseURL<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator"> = </span>GOOGLE_DOH_URL<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>httpClient<span class="token operator">: </span><span data-unresolved-link="io.ktor.client/HttpClient///PointingToDeclaration/">HttpClient</span><span class="token operator"> = </span>HttpClient(CIO)</span></span><span class="token punctuation">)</span> : <a href="../-dns-lookup-backend/index.html">DnsLookupBackend</a></div><p class="paragraph">Implementation of <a href="../-dns-lookup-backend/index.html">DnsLookupBackend</a> using Google's DNS-over-HTTPS (DoH) API.</p><p class="paragraph">Issues HTTP GET requests to a URL of the form: <code class="lang-kotlin">[baseURL]?name=&lt;hostname&gt;&amp;type=MX</code></p><p class="paragraph">Expects a JSON response containing an optional <code class="lang-kotlin">Answer</code> array. Each element of <code class="lang-kotlin">Answer</code> must include at minimum: <code class="lang-kotlin">name</code> (String), <code class="lang-kotlin">type</code> (Int), and <code class="lang-kotlin">data</code> (String). A non-empty <code class="lang-kotlin">Answer</code> array with type 15 entries (MX) indicates presence of MX records.</p></div></div>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">class </span><a href="index.html">GoogleDoHLookupBackend</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">httpClient<span class="token operator">: </span><span data-unresolved-link="io.ktor.client/HttpClient///PointingToDeclaration/">HttpClient</span><span class="token punctuation">, </span></span><span class="parameter ">baseURL<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator"> = </span>GOOGLE_DOH_URL</span></span><span class="token punctuation">)</span> : <a href="../-dns-lookup-backend/index.html">DnsLookupBackend</a></div><p class="paragraph">Implementation of <a href="../-dns-lookup-backend/index.html">DnsLookupBackend</a> using Google's DNS-over-HTTPS (DoH) API.</p><p class="paragraph">Issues HTTP GET requests to a URL of the form: <code class="lang-kotlin">[baseURL]?name=&lt;hostname&gt;&amp;type=MX</code></p><p class="paragraph">Expects a JSON response containing an optional <code class="lang-kotlin">Answer</code> array. Each element of <code class="lang-kotlin">Answer</code> must include at minimum: <code class="lang-kotlin">name</code> (String), <code class="lang-kotlin">type</code> (Int), and <code class="lang-kotlin">data</code> (String). A non-empty <code class="lang-kotlin">Answer</code> array with type 15 entries (MX) indicates presence of MX records.</p></div></div>
   </div>
   <div class="tabbedcontent">
     <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
     <div class="tabs-section-body">
       <div data-togglable="CONSTRUCTOR">
         <h2 class="">Constructors</h2>
-        <div class="table"><a data-name="633612091%2FConstructors%2F769193423" anchor-label="GoogleDoHLookupBackend" id="633612091%2FConstructors%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+        <div class="table"><a data-name="-696661189%2FConstructors%2F769193423" anchor-label="GoogleDoHLookupBackend" id="-696661189%2FConstructors%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
           <div class="table-row" data-togglable="CONSTRUCTOR" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="-google-do-h-lookup-backend.html"><span>Google</span><wbr></wbr><span>Do</span><wbr></wbr><span>HLookup</span><wbr></wbr><span><span>Backend</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="633612091%2FConstructors%2F769193423"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-696661189%2FConstructors%2F769193423"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">baseURL<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator"> = </span>GOOGLE_DOH_URL<span class="token punctuation">, </span></span><span class="parameter ">httpClient<span class="token operator">: </span><span data-unresolved-link="io.ktor.client/HttpClient///PointingToDeclaration/">HttpClient</span><span class="token operator"> = </span>HttpClient(CIO)</span></span><span class="token punctuation">)</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">httpClient<span class="token operator">: </span><span data-unresolved-link="io.ktor.client/HttpClient///PointingToDeclaration/">HttpClient</span><span class="token punctuation">, </span></span><span class="parameter ">baseURL<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token operator"> = </span>GOOGLE_DOH_URL</span></span><span class="token punctuation">)</span></div></div></div>
                 </div>
               </div>
             </div>
@@ -145,40 +145,6 @@
               <div>
                 <div class="title">
                   <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">object </span><a href="-companion/index.html">Companion</a></div></div></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div data-togglable="PROPERTY">
-        <h2 class="">Properties</h2>
-        <div class="table"><a data-name="-961373322%2FProperties%2F769193423" anchor-label="baseURL" id="-961373322%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
-          <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
-            <div class="main-subrow keyValue ">
-              <div class=""><span class="inline-flex">
-                  <div><a href="base-u-r-l.html"><span>base</span><wbr></wbr><span><span>URL</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-961373322%2FProperties%2F769193423"></span>
-                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
-                  </span></span></div>
-              <div>
-                <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="base-u-r-l.html">baseURL</a><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></div><div class="brief "><p class="paragraph">the base URL for the DoH endpoint (defaults to Google's resolver).</p></div></div></div>
-                </div>
-              </div>
-            </div>
-          </div>
-<a data-name="313716339%2FProperties%2F769193423" anchor-label="httpClient" id="313716339%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
-          <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
-            <div class="main-subrow keyValue ">
-              <div class=""><span class="inline-flex">
-                  <div><a href="http-client.html"><span>http</span><wbr></wbr><span><span>Client</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="313716339%2FProperties%2F769193423"></span>
-                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
-                  </span></span></div>
-              <div>
-                <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="http-client.html">httpClient</a><span class="token operator">: </span><span data-unresolved-link="io.ktor.client/HttpClient///PointingToDeclaration/">HttpClient</span></div><div class="brief "><p class="paragraph">HTTP client used to get Google-like DoH response from <a href="base-u-r-l.html">baseURL</a>?name=<hostname>&type=MX</p></div></div></div>
                 </div>
               </div>
             </div>
