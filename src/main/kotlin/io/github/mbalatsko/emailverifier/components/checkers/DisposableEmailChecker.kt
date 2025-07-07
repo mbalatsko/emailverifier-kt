@@ -1,5 +1,6 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
+import io.github.mbalatsko.emailverifier.components.Constants
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
 
 /**
@@ -52,6 +53,8 @@ class DisposableEmailChecker(
          */
         const val DISPOSABLE_EMAILS_LIST_STRICT_URL =
             "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains_strict.txt"
+
+        const val DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE = "${Constants.OFFLINE_DATA_PATH}/disposable.txt"
 
         /**
          * URL of the general disposable email domain list.

@@ -8,6 +8,7 @@ import io.github.mbalatsko.emailverifier.components.checkers.GravatarChecker
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.checkers.RoleBasedUsernameChecker
+import io.github.mbalatsko.emailverifier.components.providers.OfflineLFDomainsProvider
 import io.github.mbalatsko.emailverifier.components.providers.OnlineLFDomainsProvider
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -16,24 +17,38 @@ import kotlinx.coroutines.coroutineScope
 
 /**
  * Configuration for the Public Suffix List (PSL) check.
+ *
+ * @property enabled whether this check should be performed.
+ * @property pslUrl URL to the Public Suffix List data file.
+ * @property offline whether to use the bundled offline PSL data.
  */
 data class RegistrabilityConfig(
     val enabled: Boolean = true,
     val pslUrl: String = PslIndex.MOZILLA_PSL_URL,
+    val offline: Boolean = true,
 )
 
 /**
  * Builder for [RegistrabilityConfig].
  */
 class RegistrabilityConfigBuilder {
+    /** Whether this check should be performed. */
     var enabled: Boolean = true
+
+    /** URL to the Public Suffix List data file. */
     var pslUrl: String = PslIndex.MOZILLA_PSL_URL
 
-    internal fun build() = RegistrabilityConfig(enabled, pslUrl)
+    /** Whether to use the bundled offline PSL data. */
+    var offline: Boolean = true
+
+    internal fun build(allOffline: Boolean) = RegistrabilityConfig(enabled, pslUrl, offline || allOffline)
 }
 
 /**
  * Configuration for MX record check.
+ *
+ * @property enabled whether this check should be performed.
+ * @property dohServerEndpoint URL to the DNS-over-HTTPS server.
  */
 data class MxRecordConfig(
     val enabled: Boolean = true,
@@ -44,32 +59,48 @@ data class MxRecordConfig(
  * Builder for [MxRecordConfig].
  */
 class MxRecordConfigBuilder {
+    /** Whether this check should be performed. */
     var enabled: Boolean = true
+
+    /** URL to the DNS-over-HTTPS server. */
     var dohServerEndpoint: String = GoogleDoHLookupBackend.GOOGLE_DOH_URL
 
-    internal fun build() = MxRecordConfig(enabled, dohServerEndpoint)
+    internal fun build(allOffline: Boolean) = MxRecordConfig(enabled && !allOffline, dohServerEndpoint)
 }
 
 /**
  * Configuration for disposable email check.
+ *
+ * @property enabled whether this check should be performed.
+ * @property domainsListUrl URL to the disposable email domains list.
+ * @property offline whether to use the bundled offline disposable email domains list.
  */
 data class DisposabilityConfig(
     val enabled: Boolean = true,
     val domainsListUrl: String = DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_URL,
+    val offline: Boolean = true,
 )
 
 /**
  * Builder for [DisposabilityConfig].
  */
 class DisposabilityConfigBuilder {
+    /** Whether this check should be performed. */
     var enabled: Boolean = true
+
+    /** URL to the disposable email domains list. */
     var domainsListUrl: String = DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_URL
 
-    internal fun build() = DisposabilityConfig(enabled, domainsListUrl)
+    /** Whether to use the bundled offline disposable email domains list. */
+    var offline: Boolean = true
+
+    internal fun build(allOffline: Boolean) = DisposabilityConfig(enabled, domainsListUrl, offline || allOffline)
 }
 
 /**
  * Configuration for Gravatar check.
+ *
+ * @property enabled whether this check should be performed.
  */
 data class GravatarConfig(
     val enabled: Boolean = true,
@@ -79,51 +110,79 @@ data class GravatarConfig(
  * Builder for [GravatarConfig].
  */
 class GravatarConfigBuilder {
+    /** Whether this check should be performed. */
     var enabled: Boolean = true
 
-    internal fun build() = GravatarConfig(enabled)
+    internal fun build(allOffline: Boolean) = GravatarConfig(enabled && !allOffline)
 }
 
 /**
  * Configuration for free email provider check.
+ *
+ * @property enabled whether this check should be performed.
+ * @property domainsListUrl URL to the free email provider domains list.
+ * @property offline whether to use the bundled offline free email provider domains list.
  */
 data class FreeConfig(
     val enabled: Boolean = true,
     val domainsListUrl: String = FreeChecker.FREE_EMAILS_LIST_URL,
+    val offline: Boolean = true,
 )
 
 /**
  * Builder for [FreeConfig].
  */
 class FreeConfigBuilder {
+    /** Whether this check should be performed. */
     var enabled: Boolean = true
+
+    /** URL to the free email provider domains list. */
     var domainsListUrl: String = FreeChecker.FREE_EMAILS_LIST_URL
 
-    internal fun build() = FreeConfig(enabled, domainsListUrl)
+    /** Whether to use the bundled offline free email provider domains list. */
+    var offline: Boolean = true
+
+    internal fun build(allOffline: Boolean) = FreeConfig(enabled, domainsListUrl, offline || allOffline)
 }
 
 /**
  * Configuration for role-based username check.
+ *
+ * @property enabled whether this check should be performed.
+ * @property usernamesListUrl URL to the role-based usernames list.
+ * @property offline whether to use the bundled offline role-based usernames list.
  */
 data class RoleBasedUsernameConfig(
     val enabled: Boolean = true,
     val usernamesListUrl: String = RoleBasedUsernameChecker.ROLE_BASED_USERNAMES_LIST_URL,
+    val offline: Boolean = true,
 )
 
 /**
  * Builder for [RoleBasedUsernameConfig].
  */
 class RoleBasedUsernameConfigBuilder {
+    /** Whether this check should be performed. */
     var enabled: Boolean = true
+
+    /** URL to the role-based usernames list. */
     var usernamesListUrl: String = RoleBasedUsernameChecker.ROLE_BASED_USERNAMES_LIST_URL
 
-    internal fun build() = RoleBasedUsernameConfig(enabled, usernamesListUrl)
+    /** Whether to use the bundled offline role-based usernames list. */
+    var offline: Boolean = true
+
+    internal fun build(allOffline: Boolean) = RoleBasedUsernameConfig(enabled, usernamesListUrl, offline || allOffline)
 }
 
 /**
  * DSL builder for configuring and initializing [EmailVerifier].
  */
 class EmailVerifierDslBuilder {
+    /**
+     * If true, all checks that support offline mode will use the bundled data.
+     * This will also disable checks that do not support offline mode.
+     */
+    var allOffline = false
     val registrability = RegistrabilityConfigBuilder()
     val mxRecord = MxRecordConfigBuilder()
     val disposability = DisposabilityConfigBuilder()
@@ -162,59 +221,89 @@ class EmailVerifierDslBuilder {
             val currentHttpClient = httpClient ?: HttpClient(CIO)
             val emailSyntaxChecker = EmailSyntaxChecker()
 
-            val registrabilityConfig = registrability.build()
-            val mxRecordConfig = mxRecord.build()
-            val disposabilityConfig = disposability.build()
-            val gravatarConfig = gravatar.build()
-            val freeConfig = free.build()
-            val roleBasedUsernameConfig = roleBasedUsername.build()
+            val registrabilityConfig = registrability.build(allOffline)
+            val mxRecordConfig = mxRecord.build(allOffline)
+            val disposabilityConfig = disposability.build(allOffline)
+            val gravatarConfig = gravatar.build(allOffline)
+            val freeConfig = free.build(allOffline)
+            val roleBasedUsernameConfig = roleBasedUsername.build(allOffline)
 
             val pslIndex =
-                if (registrabilityConfig.enabled) {
-                    async { PslIndex.init(OnlineLFDomainsProvider(registrabilityConfig.pslUrl, currentHttpClient)) }
-                } else {
-                    null
+                when (registrabilityConfig.enabled) {
+                    true ->
+                        async {
+                            val domainProvider =
+                                when (registrabilityConfig.offline) {
+                                    true -> OfflineLFDomainsProvider(PslIndex.MOZILLA_PSL_RESOURCE_FILE)
+                                    false -> OnlineLFDomainsProvider(registrabilityConfig.pslUrl, currentHttpClient)
+                                }
+                            PslIndex.init(domainProvider)
+                        }
+                    false -> null
                 }
 
             val disposableEmailChecker =
-                if (disposabilityConfig.enabled) {
-                    async {
-                        DisposableEmailChecker.init(
-                            OnlineLFDomainsProvider(disposabilityConfig.domainsListUrl, currentHttpClient),
-                        )
-                    }
-                } else {
-                    null
+                when (disposabilityConfig.enabled) {
+                    true ->
+                        async {
+                            val domainProvider =
+                                when (disposabilityConfig.offline) {
+                                    true -> OfflineLFDomainsProvider(DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE)
+                                    false -> OnlineLFDomainsProvider(disposabilityConfig.domainsListUrl, currentHttpClient)
+                                }
+                            DisposableEmailChecker.init(
+                                domainProvider,
+                            )
+                        }
+                    false -> null
                 }
 
             val freeChecker =
-                if (freeConfig.enabled) {
-                    async { FreeChecker.init(OnlineLFDomainsProvider(freeConfig.domainsListUrl, currentHttpClient)) }
-                } else {
-                    null
+                when (freeConfig.enabled) {
+                    true ->
+                        async {
+                            val domainProvider =
+                                when (freeConfig.offline) {
+                                    true -> OfflineLFDomainsProvider(FreeChecker.FREE_EMAILS_LIST_RESOURCE_FILE)
+                                    false -> OnlineLFDomainsProvider(freeConfig.domainsListUrl, currentHttpClient)
+                                }
+                            FreeChecker.init(domainProvider)
+                        }
+                    false -> null
                 }
 
             val roleBasedUsernameChecker =
-                if (roleBasedUsernameConfig.enabled) {
-                    async {
-                        RoleBasedUsernameChecker.init(OnlineLFDomainsProvider(roleBasedUsernameConfig.usernamesListUrl, currentHttpClient))
-                    }
-                } else {
-                    null
+                when (roleBasedUsernameConfig.enabled) {
+                    true ->
+                        async {
+                            val domainProvider =
+                                when (freeConfig.offline) {
+                                    true -> OfflineLFDomainsProvider(RoleBasedUsernameChecker.ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE)
+                                    false -> OnlineLFDomainsProvider(roleBasedUsernameConfig.usernamesListUrl, currentHttpClient)
+                                }
+                            RoleBasedUsernameChecker.init(
+                                domainProvider,
+                            )
+                        }
+                    false -> null
                 }
 
             val mxRecordChecker =
-                if (mxRecordConfig.enabled) {
-                    MxRecordChecker(GoogleDoHLookupBackend(currentHttpClient, mxRecordConfig.dohServerEndpoint))
-                } else {
-                    null
+                when (mxRecordConfig.enabled) {
+                    true ->
+                        MxRecordChecker(
+                            GoogleDoHLookupBackend(
+                                currentHttpClient,
+                                mxRecordConfig.dohServerEndpoint,
+                            ),
+                        )
+                    false -> null
                 }
 
             val gravatarChecker =
-                if (gravatarConfig.enabled) {
-                    GravatarChecker(currentHttpClient)
-                } else {
-                    null
+                when (gravatarConfig.enabled) {
+                    true -> GravatarChecker(currentHttpClient)
+                    false -> null
                 }
 
             EmailVerifier(

@@ -1,5 +1,6 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
+import io.github.mbalatsko.emailverifier.components.Constants
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
 
 /**
@@ -38,6 +39,8 @@ class RoleBasedUsernameChecker(
          */
         const val ROLE_BASED_USERNAMES_LIST_URL =
             "https://raw.githubusercontent.com/mbalatsko/role-based-email-addresses-list/main/list.txt"
+
+        const val ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE = "${Constants.OFFLINE_DATA_PATH}/role-based.txt"
 
         /**
          * Convenience initializer that creates a [RoleBasedUsernameChecker] and immediately

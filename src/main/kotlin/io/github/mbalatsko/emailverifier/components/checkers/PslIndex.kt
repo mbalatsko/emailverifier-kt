@@ -1,5 +1,6 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
+import io.github.mbalatsko.emailverifier.components.Constants
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
 
 /**
@@ -124,6 +125,8 @@ class PslIndex(
     companion object {
         /** Default URL to Mozilla-maintained Public Suffix List. */
         const val MOZILLA_PSL_URL = "https://publicsuffix.org/list/public_suffix_list.dat"
+
+        const val MOZILLA_PSL_RESOURCE_FILE = "${Constants.OFFLINE_DATA_PATH}/psl.txt"
 
         /**
          * Constructs and initializes a [PslIndex] using the given provider.
