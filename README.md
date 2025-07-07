@@ -59,6 +59,15 @@ Detects generic or departmental username (e.g. `info@`, `admin@`, `support@`) by
 
 List used: https://github.com/mbalatsko/role-based-email-addresses-list (original repo: https://github.com/mixmaxhq/role-based-email-addresses)
 
+### 8. **Offline Mode**
+For environments without internet access, EmailVerifier can run in a fully offline mode. When enabled, it uses bundled 
+data for checks that support it (Syntax, Registrability, Disposability, Free Email, and Role-Based Username) and automatically 
+disables checks that require network access (MX Record, Gravatar). 
+
+You can also configure offline mode for each check individually.
+
+The bundled data is automatically updated daily via a GitHub Actions workflow.
+
 ## 🧪 Output: Validation Results
 
 You get a detailed result for each check:
@@ -77,7 +86,7 @@ data class EmailValidationResult(
   /**
    * Returns true if all strong indicator checks either passed or were skipped.
    * Strong indicator checks: syntax, registrability, mx record presence, disposability
-   * Note: mx record presence might return ERRORED, which is not validated 
+   * Note: mx record presence might return ERRORED, which is not validated
    */
     fun ok(): Boolean
 }
@@ -134,6 +143,7 @@ val verifier = emailVerifier {
     registrability {
         enabled = true // Explicitly enable (default is true)
         pslUrl  = "https://my.custom.domain/public_suffix_list.dat" // Custom PSL URL
+        offline = false // Use online data for this check
     }
     mxRecord {
         enabled = false // Disable MX record checks
@@ -159,7 +169,35 @@ val verifier = emailVerifier {
 }
 ```
 
-### 4. Advanced Configuration: Custom HttpClient
+### 4. Offline Mode
+
+To enable offline mode for all checks, set the `allOffline` property to `true`. This will use bundled data for all supported checks and disable network-dependent checks.
+
+```kotlin
+val verifier = emailVerifier {
+    allOffline = true
+}
+
+val result = verifier.verify("mbalatsko@gmail.com")
+// result.mxRecordCheck will be SKIPPED
+// result.gravatarCheck will be SKIPPED
+```
+
+You can also configure offline mode for each check individually.
+
+```kotlin
+val verifier = emailVerifier {
+    registrability {
+        offline = true // Use offline data for this check
+    }
+    disposability {
+        offline = true
+    }
+    // MX and Gravatar checks will still run unless disabled
+}
+```
+
+### 5. Advanced Configuration: Custom HttpClient
 
 For more advanced use cases, such as configuring retries for network requests, you can pass a custom-configured `HttpClient` to the `EmailVerifier`. This gives you full control over the network layer.
 
@@ -184,10 +222,10 @@ val verifier = emailVerifier {
 }
 ```
 
-### 5. Performance Considerations
+### 6. Performance Considerations
 
-The `emailVerifier {}` call performs several network requests to download the necessary data for the various checks. 
-To avoid re-downloading this data every time you want to verify an email, it is highly recommended to **create a single 
+The `emailVerifier {}` call performs several network requests to download the necessary data for the various checks.
+To avoid re-downloading this data every time you want to verify an email, it is highly recommended to **create a single
 instance of the `EmailVerifier` and reuse it throughout the lifecycle of your application**.
 
 ## ⚙️ Powered By
