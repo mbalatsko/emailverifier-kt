@@ -43,7 +43,6 @@ spotless {
 
 dependencies {
     implementation("io.ktor:ktor-client-core:3.2.0")
-    implementation("io.ktor:ktor-client-content-negotiation:3.2.0")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.2.0")
     implementation("io.ktor:ktor-client-cio:3.2.0")
     implementation("com.squareup.okio:okio:3.13.0")
