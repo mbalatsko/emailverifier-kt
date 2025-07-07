@@ -7,6 +7,7 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class DomainProvidersTest {
     private class TestLFDomainsProvider(
@@ -49,4 +50,20 @@ class DomainProvidersTest {
             val result = provider.provide()
             assertEquals(setOf("disposable.com", "trashmail.org"), result)
         }
+
+    @Test
+    fun `offline provider returns expected data`() =
+        runTest {
+            val provider = OfflineLFDomainsProvider("/offline-data/disposable.txt")
+            val result = provider.provide()
+            assertTrue(result.contains("yopmail.com"))
+            assertTrue(result.contains("simplelogin.com"))
+        }
+
+    @Test
+    fun `offline provider throws for non-existent resource`() {
+        kotlin.test.assertFailsWith<IllegalArgumentException> {
+            OfflineLFDomainsProvider("non-existent-file.txt")
+        }
+    }
 }

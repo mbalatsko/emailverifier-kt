@@ -1,0 +1,30 @@
+name: Daily update of offline data
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every day
+    - cron: '0 0 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Fetch & extract const strings
+        run: ./scripts/download-data.sh
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "✔ No updates needed"
+          else
+            git add .
+            DATE=$(date -u +'%Y-%m-%d')
+            git commit -m "Automated daily update of offline data: $DATE"
+            git push
+          fi

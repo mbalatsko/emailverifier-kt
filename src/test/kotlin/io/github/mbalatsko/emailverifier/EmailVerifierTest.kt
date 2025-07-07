@@ -178,7 +178,7 @@ class EmailVerifierOnlineTest {
     val onlineEmailVerifier = runBlocking { emailVerifier { } }
 
     @Test
-    fun `integration passes all checks online, but fails gravatar and free`() =
+    fun `integration passes all checks, but fails gravatar and free`() =
         runTest {
             val result = onlineEmailVerifier.verify("mbalatsko@gmail.com")
             assertTrue(result.ok())
@@ -229,6 +229,52 @@ class EmailVerifierOnlineTest {
     fun `integration fails role-based`() =
         runTest {
             val result = onlineEmailVerifier.verify("admin@simplelogin.com")
+            assertTrue(result.roleBasedUsernameCheck == CheckResult.FAILED)
+        }
+}
+
+class EmailVerifierOfflineTest {
+    val offlineEmailVerifier = runBlocking { emailVerifier { allOffline = true } }
+
+    @Test
+    fun `integration passes all checks offline, fails gravatar and free, skips online checks`() =
+        runTest {
+            val result = offlineEmailVerifier.verify("mbalatsko@gmail.com")
+            assertTrue(result.ok())
+            assertTrue(result.freeCheck == CheckResult.FAILED)
+            assertTrue(result.roleBasedUsernameCheck == CheckResult.PASSED)
+
+            assertTrue(result.gravatarCheck == CheckResult.SKIPPED)
+            assertTrue(result.mxRecordCheck == CheckResult.SKIPPED)
+        }
+
+    @Test
+    fun `integration passes free check`() =
+        runTest {
+            val result = offlineEmailVerifier.verify("maksym.balatsko@blindspot.ai")
+            assertTrue(result.freeCheck == CheckResult.PASSED)
+        }
+
+    @Test
+    fun `integration fails registrability`() =
+        runTest {
+            val result = offlineEmailVerifier.verify("mbalatsko@invalid.invalid")
+            assertFalse(result.ok())
+            assertTrue(result.registrabilityCheck == CheckResult.FAILED)
+        }
+
+    @Test
+    fun `integration fails disposability`() =
+        runTest {
+            val result = offlineEmailVerifier.verify("mbalatsko@simplelogin.com")
+            assertFalse(result.ok())
+            assertTrue(result.disposabilityCheck == CheckResult.FAILED)
+        }
+
+    @Test
+    fun `integration fails role-based`() =
+        runTest {
+            val result = offlineEmailVerifier.verify("admin@simplelogin.com")
             assertTrue(result.roleBasedUsernameCheck == CheckResult.FAILED)
         }
 }

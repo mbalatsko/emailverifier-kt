@@ -55,3 +55,15 @@ class OnlineLFDomainsProvider(
      */
     override suspend fun obtainData(): String = httpClient.get(url).bodyAsText()
 }
+
+class OfflineLFDomainsProvider(
+    private val resourcesFilePath: String,
+) : LFDomainsProvider() {
+    init {
+        require(
+            this.javaClass.getResource(resourcesFilePath) != null,
+        ) { "$resourcesFilePath resource does not exist" }
+    }
+
+    override suspend fun obtainData(): String = this.javaClass.getResource(resourcesFilePath)!!.readText()
+}
