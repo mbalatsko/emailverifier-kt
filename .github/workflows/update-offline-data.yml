@@ -5,6 +5,12 @@ on:
     # Runs at 00:00 UTC every day
     - cron: '0 0 * * *'
 
+permissions:
+  id-token: write
+  contents: write
+  actions: read
+  checks: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
