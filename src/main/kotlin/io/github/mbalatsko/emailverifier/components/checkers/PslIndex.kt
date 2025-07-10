@@ -93,20 +93,20 @@ class PslIndex(
         var node = root
 
         var matchLen: Int? = null
-        var rule: String? = null
+        var eTld: String? = null
         for ((i, label) in labels.withIndex()) {
             val next = node.children[label] ?: node.children["*"]
-            rule = if (rule != null) "$label.$rule" else label
+            eTld = if (eTld != null) "$label.$eTld" else label
             if (next == null) break
             node = next
 
             if (node.isException) {
-                return rule
+                return eTld
             } else if (node.isSuffix || node.isWildcard) {
                 matchLen = i + 1
             }
         }
-        return if (matchLen != null && labels.size > matchLen) rule else null
+        return if (matchLen != null && labels.size > matchLen) eTld else null
     }
 
     companion object {

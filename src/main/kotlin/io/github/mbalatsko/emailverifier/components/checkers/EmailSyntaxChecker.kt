@@ -36,7 +36,7 @@ class EmailSyntaxChecker {
         val emailParts = email.split('@')
         require(emailParts.size == 2) { "Email must have exactly one @ character." }
 
-        val hostname = IDN.toASCII(emailParts[1])
+        val hostname = IDN.toASCII(emailParts[1]).lowercase()
 
         val usernameParts = emailParts[0].split('+', limit = 2)
 
@@ -82,9 +82,6 @@ class EmailSyntaxChecker {
         }
 
         // 3. Dot-atom text: atext *( "." atext )
-        // atext = ALPHA / DIGIT /    ; Any character except specials, space and control
-        //         "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "/" / "=" / "?" /
-        //         "^" / "_" / "`" / "{" / "|" / "}" / "~"
         if (!dotAtomRegex.matches(username)) return false
         // No leading, trailing, or consecutive dots
         if (username.startsWith(".") || username.endsWith(".") || username.contains("..")) return false
@@ -131,6 +128,10 @@ class EmailSyntaxChecker {
     }
 
     companion object {
+        // atext *( "." atext )
+        // atext = ALPHA / DIGIT /    ; Any character except specials, space and control
+        //         "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "/" / "=" / "?" /
+        //         "^" / "_" / "`" / "{" / "|" / "}" / "~"
         private const val ATEXT = "[a-zA-Z0-9!#\$%&'*+/=?^_`{|}~-]"
         private val dotAtomRegex = Regex("^$ATEXT+(\\.$ATEXT+)*\$")
         private val hostnameRegex = Regex("^[a-zA-Z0-9-]+$")
