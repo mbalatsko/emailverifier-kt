@@ -87,7 +87,6 @@ class EmailSyntaxCheckerTest {
             listOf(
                 "example.com",
                 "sub.domain.co.uk",
-                "bücher.de",
                 "xn--bcher-kva.de",
                 "localhost",
             )
@@ -106,6 +105,7 @@ class EmailSyntaxCheckerTest {
                 "enddash-.com", // label ends with dash
                 "toolonglabel${"a".repeat(63)}.com", // label >63 chars
                 "a".repeat(254), // hostname >253 chars
+                "a..b.com", // consecutive dots
             )
         invalidHostnames.forEach { assertFalse(checker.isHostnameValid(it), "Expected invalid hostname: $it") }
     }

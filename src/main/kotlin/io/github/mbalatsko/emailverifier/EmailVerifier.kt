@@ -1,21 +1,65 @@
 package io.github.mbalatsko.emailverifier
 
 import io.github.mbalatsko.emailverifier.components.checkers.DisposableEmailChecker
+import io.github.mbalatsko.emailverifier.components.checkers.EmailParts
 import io.github.mbalatsko.emailverifier.components.checkers.EmailSyntaxChecker
 import io.github.mbalatsko.emailverifier.components.checkers.FreeChecker
 import io.github.mbalatsko.emailverifier.components.checkers.GravatarChecker
+import io.github.mbalatsko.emailverifier.components.checkers.MxRecord
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.checkers.RoleBasedUsernameChecker
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
-enum class CheckResult {
-    PASSED,
-    FAILED,
-    SKIPPED,
-    ERRORED,
+/**
+ * A sealed class representing the result of a single validation check.
+ * It can be in one of four states: Passed, Failed, Skipped, or Errored.
+ *
+ * @param T the type of data carried by the result.
+ */
+sealed class CheckResult<out T> {
+    /**
+     * Indicates that the check was successful.
+     * @property data optional data associated with the passed check.
+     */
+    data class Passed<T>(
+        val data: T? = null,
+    ) : CheckResult<T>()
+
+    /**
+     * Indicates that the check failed.
+     * @property data optional data associated with the failed check.
+     */
+    data class Failed<T>(
+        val data: T? = null,
+    ) : CheckResult<T>()
+
+    /**
+     * Indicates that the check was skipped.
+     */
+    data object Skipped : CheckResult<Nothing>()
+
+    /**
+     * Indicates that the check produced an error.
+     * @property error the throwable that was caught during the check.
+     */
+    data class Errored(
+        val error: Throwable,
+    ) : CheckResult<Nothing>()
 }
+
+/**
+ * Data class holding the validity of each part of the email syntax.
+ * @property username true if the username part is valid.
+ * @property plusTag true if the plus-tag part is valid.
+ * @property hostname true if the hostname part is valid.
+ */
+data class SyntaxValidationData(
+    val username: Boolean,
+    val plusTag: Boolean,
+    val hostname: Boolean,
+)
 
 /**
  * Custom exception to signal that a verification check failed due to an external error.
@@ -29,34 +73,34 @@ class VerificationError(
  * Aggregated result of a full email validation process.
  *
  * @property email the input email address.
- * @property syntaxCheck result of syntax validation.
- * @property registrabilityCheck result of public suffix (PSL) registrability validation.
- * @property mxRecordCheck result of MX record existence check.
- * @property disposabilityCheck result of disposable domain detection.
- * @property gravatarCheck result of gravatar presence check, `FAILED` if gravatar is not present
- * @property freeCheck result of check against list of known free‐email provider, `PASSED` if email hostname is not a known free‐email provider
- * @property roleBasedUsernameCheck result of check against list of role-based usernames, `PASSED` if email username is not a role-based username
+ * @property syntax result of syntax validation.
+ * @property registrability result of public suffix (PSL) registrability validation.
+ * @property mx result of MX record existence check.
+ * @property disposable result of disposable domain detection.
+ * @property gravatar result of gravatar presence check.
+ * @property free result of check against list of known free‐email providers.
+ * @property roleBasedUsername result of check against list of role-based usernames.
  */
 data class EmailValidationResult(
     val email: String,
-    val syntaxCheck: CheckResult,
-    val registrabilityCheck: CheckResult = CheckResult.SKIPPED,
-    val mxRecordCheck: CheckResult = CheckResult.SKIPPED,
-    val disposabilityCheck: CheckResult = CheckResult.SKIPPED,
-    val gravatarCheck: CheckResult = CheckResult.SKIPPED,
-    val freeCheck: CheckResult = CheckResult.SKIPPED,
-    val roleBasedUsernameCheck: CheckResult = CheckResult.SKIPPED,
+    val emailParts: EmailParts,
+    val syntax: CheckResult<SyntaxValidationData>,
+    val registrability: CheckResult<String?> = CheckResult.Skipped,
+    val mx: CheckResult<List<MxRecord>> = CheckResult.Skipped,
+    val disposable: CheckResult<Unit> = CheckResult.Skipped,
+    val gravatar: CheckResult<String?> = CheckResult.Skipped,
+    val free: CheckResult<Unit> = CheckResult.Skipped,
+    val roleBasedUsername: CheckResult<Unit> = CheckResult.Skipped,
 ) {
     /**
-     * Returns true if all strong indicator checks either passed or were skipped.
-     * Strong indicator checks: syntax, registrability, mx record presence, disposability
-     * Note: mx record presence might return ERRORED, which is not validated
+     * Returns true if all strong indicator checks passed.
+     * Strong indicator checks: syntax, registrability, mx record presence, disposability.
      */
-    fun ok(): Boolean =
-        syntaxCheck != CheckResult.FAILED &&
-            registrabilityCheck != CheckResult.FAILED &&
-            mxRecordCheck != CheckResult.FAILED &&
-            disposabilityCheck != CheckResult.FAILED
+    fun isLikelyDeliverable(): Boolean =
+        syntax !is CheckResult.Failed &&
+            registrability !is CheckResult.Failed &&
+            mx !is CheckResult.Failed &&
+            disposable !is CheckResult.Failed
 }
 
 /**
@@ -77,92 +121,126 @@ class EmailVerifier(
     private val roleBasedUsernameChecker: RoleBasedUsernameChecker?,
 ) {
     /**
-     * Executes a verification check, handling null checkers, preconditions, and errors.
-     *
-     * @param checker The checker instance; if null, the check is skipped.
-     * @param precondition An optional boolean precondition; if false, the check is skipped.
-     * @param action The suspendable lambda representing the actual check logic.
-     * @return The [CheckResult] based on the action's outcome or skipping conditions.
-     */
-    private suspend fun runCheck(
-        checker: Any?,
-        precondition: Boolean = true,
-        action: suspend () -> Boolean,
-    ): CheckResult =
-        try {
-            when {
-                checker == null -> CheckResult.SKIPPED
-                !precondition -> CheckResult.SKIPPED
-                action() -> CheckResult.PASSED
-                else -> CheckResult.FAILED
-            }
-        } catch (e: VerificationError) {
-            CheckResult.ERRORED
-        }
-
-    /**
      * Validates the given email address using configured checks.
      *
      * @param email the input email address to validate.
      * @return a structured [EmailValidationResult] with results for each check.
      */
-    suspend fun verify(email: String): EmailValidationResult =
-        coroutineScope {
-            val emailParts =
-                try {
-                    emailSyntaxChecker.parseEmailParts(email)
-                } catch (_: IllegalArgumentException) {
-                    return@coroutineScope EmailValidationResult(
-                        email,
-                        CheckResult.FAILED,
-                    )
-                }
+    suspend fun verify(email: String): EmailValidationResult {
+        val emailParts =
+            try {
+                emailSyntaxChecker.parseEmailParts(email)
+            } catch (_: IllegalArgumentException) {
+                val syntaxData = SyntaxValidationData(username = false, plusTag = false, hostname = false)
+                return EmailValidationResult(
+                    email = email,
+                    emailParts = EmailParts("", "", ""),
+                    syntax = CheckResult.Failed(syntaxData),
+                )
+            }
 
-            val isUsernameValid = emailSyntaxChecker.isUsernameValid(emailParts.username)
-            val isPlusTagValid = emailSyntaxChecker.isPlusTagValid(emailParts.plusTag)
-            val isHostnameValid = emailSyntaxChecker.isHostnameValid(emailParts.hostname)
-            val syntaxCheck =
-                if (isUsernameValid && isPlusTagValid && isHostnameValid) CheckResult.PASSED else CheckResult.FAILED
+        val isUsernameValid = emailSyntaxChecker.isUsernameValid(emailParts.username)
+        val isPlusTagValid = emailSyntaxChecker.isPlusTagValid(emailParts.plusTag)
+        val isHostnameValid = emailSyntaxChecker.isHostnameValid(emailParts.hostname)
+        val syntaxData = SyntaxValidationData(isUsernameValid, isPlusTagValid, isHostnameValid)
+        val syntaxCheck =
+            if (syntaxData.run { username && plusTag && hostname }) {
+                CheckResult.Passed(syntaxData)
+            } else {
+                CheckResult.Failed(syntaxData)
+            }
 
+        return coroutineScope {
             val registrabilityCheck =
-                runCheck(pslIndex, isHostnameValid) {
-                    pslIndex!!.isHostnameRegistrable(emailParts.hostname)
+                async {
+                    try {
+                        if (pslIndex == null || !isHostnameValid) {
+                            CheckResult.Skipped
+                        } else {
+                            val result = pslIndex.findRegistrableDomain(emailParts.hostname)
+                            if (result != null) CheckResult.Passed(result) else CheckResult.Failed(result)
+                        }
+                    } catch (e: Exception) {
+                        CheckResult.Errored(e)
+                    }
                 }
             val disposabilityCheck =
-                runCheck(disposableEmailChecker, isHostnameValid) {
-                    !disposableEmailChecker!!.isDisposable(emailParts.hostname)
+                async {
+                    try {
+                        if (disposableEmailChecker == null || !isHostnameValid) {
+                            CheckResult.Skipped
+                        } else {
+                            val result = disposableEmailChecker.isDisposable(emailParts.hostname)
+                            if (!result) CheckResult.Passed(Unit) else CheckResult.Failed(Unit)
+                        }
+                    } catch (e: Exception) {
+                        CheckResult.Errored(e)
+                    }
                 }
             val freeCheck =
-                runCheck(freeChecker, isHostnameValid) {
-                    !freeChecker!!.isFree(emailParts.hostname)
+                async {
+                    try {
+                        if (freeChecker == null || !isHostnameValid) {
+                            CheckResult.Skipped
+                        } else {
+                            val result = freeChecker.isFree(emailParts.hostname)
+                            if (!result) CheckResult.Passed(Unit) else CheckResult.Failed(Unit)
+                        }
+                    } catch (e: Exception) {
+                        CheckResult.Errored(e)
+                    }
                 }
             val roleBasedUsernameCheck =
-                runCheck(roleBasedUsernameChecker, isUsernameValid) {
-                    !roleBasedUsernameChecker!!.isRoleBased(emailParts.username)
+                async {
+                    try {
+                        if (roleBasedUsernameChecker == null || !isUsernameValid) {
+                            CheckResult.Skipped
+                        } else {
+                            val result = roleBasedUsernameChecker.isRoleBased(emailParts.username)
+                            if (!result) CheckResult.Passed(Unit) else CheckResult.Failed(Unit)
+                        }
+                    } catch (e: Exception) {
+                        CheckResult.Errored(e)
+                    }
                 }
-
             val mxRecordCheck =
                 async {
-                    runCheck(mxRecordChecker, isHostnameValid) {
-                        mxRecordChecker!!.isPresent(emailParts.hostname)
+                    try {
+                        if (mxRecordChecker == null || !isHostnameValid) {
+                            CheckResult.Skipped
+                        } else {
+                            val result = mxRecordChecker.getRecords(emailParts.hostname)
+                            if (result.isNotEmpty()) CheckResult.Passed(result) else CheckResult.Failed(result)
+                        }
+                    } catch (e: Exception) {
+                        CheckResult.Errored(e)
                     }
                 }
             val gravatarCheck =
                 async {
-                    runCheck(gravatarChecker, isUsernameValid && isHostnameValid) {
-                        gravatarChecker!!.hasGravatar("${emailParts.username}@${emailParts.hostname}")
+                    try {
+                        if (gravatarChecker == null || !isUsernameValid || !isHostnameValid) {
+                            CheckResult.Skipped
+                        } else {
+                            val result = gravatarChecker.getGravatarUrl("${emailParts.username}@${emailParts.hostname}")
+                            if (result != null) CheckResult.Passed(result) else CheckResult.Failed(result)
+                        }
+                    } catch (e: Exception) {
+                        CheckResult.Errored(e)
                     }
                 }
 
             EmailValidationResult(
-                email,
-                syntaxCheck,
-                registrabilityCheck,
-                mxRecordCheck.await(),
-                disposabilityCheck,
-                gravatarCheck.await(),
-                freeCheck,
-                roleBasedUsernameCheck,
+                email = email,
+                emailParts = emailParts,
+                syntax = syntaxCheck,
+                registrability = registrabilityCheck.await(),
+                mx = mxRecordCheck.await(),
+                disposable = disposabilityCheck.await(),
+                gravatar = gravatarCheck.await(),
+                free = freeCheck.await(),
+                roleBasedUsername = roleBasedUsernameCheck.await(),
             )
         }
+    }
 }

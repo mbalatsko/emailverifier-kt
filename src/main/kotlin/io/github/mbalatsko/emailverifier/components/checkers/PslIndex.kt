@@ -73,53 +73,30 @@ class PslIndex(
         }
     }
 
-    /**
-     * Determines whether the given hostname is registrable.
-     *
-     * A hostname is registrable if it has more labels than the matching PSL suffix.
-     * For example, `example.co.uk` is registrable, but `co.uk` is not.
-     *
-     * @param hostname the domain name to check.
-     * @return `true` if registrable, `false` otherwise.
-     */
-    fun isHostnameRegistrable(hostname: String): Boolean {
+    fun findRegistrableDomain(hostname: String): String? {
         val labels =
             hostname
-                .trim()
-                .lowercase()
                 .split(".")
                 .reversed()
-        // TLDs are not registrable in general
-        if (labels.size == 1) {
-            return false
-        }
-        val matchLen = findMatchingRule(labels)
-        return matchLen != null && labels.size > matchLen
-    }
+        if (labels.size <= 1) return null // TLDs are not registrable
 
-    /**
-     * Computes the length (in labels) of the best matching PSL rule.
-     *
-     * Applies standard PSL matching semantics: longest match, wildcard support, and exception handling.
-     *
-     * @param labels reversed domain labels (TLD first).
-     * @return length of the matching rule in labels, or `null` if no match found.
-     */
-    private fun findMatchingRule(labels: List<String>): Int? {
         var node = root
+
         var matchLen: Int? = null
-        var exceptionMatchLen: Int? = null
+        var rule: String? = null
         for ((i, label) in labels.withIndex()) {
             val next = node.children[label] ?: node.children["*"]
+            rule = if (rule != null) "$label.$rule" else label
             if (next == null) break
             node = next
+
             if (node.isException) {
-                exceptionMatchLen = i
+                return rule
             } else if (node.isSuffix || node.isWildcard) {
                 matchLen = i + 1
             }
         }
-        return exceptionMatchLen ?: matchLen
+        return if (matchLen != null && labels.size > matchLen) rule else null
     }
 
     companion object {

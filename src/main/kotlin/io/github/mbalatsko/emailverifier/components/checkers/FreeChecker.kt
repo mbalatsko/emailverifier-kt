@@ -12,26 +12,15 @@ import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
  * @property domainsProvider source of domain names.
  */
 class FreeChecker(
-    val domainsProvider: DomainsProvider,
-) {
-    private var freeDomainsSet = emptySet<String>()
-
-    /**
-     * Loads and indexes the free-email domain list from the [domainsProvider].
-     *
-     * Must be called before invoking [isFree].
-     */
-    suspend fun loadData() {
-        freeDomainsSet = domainsProvider.provide()
-    }
-
+    domainsProvider: DomainsProvider,
+) : BaseChecker(domainsProvider) {
     /**
      * Determines if the specified hostname is in the free-email provider list.
      *
      * @param hostname the domain part of an email address.
      * @return `true` if the domain is recognized as a free-email provider.
      */
-    fun isFree(hostname: String): Boolean = hostname in freeDomainsSet
+    fun isFree(hostname: String): Boolean = hostname in dataSet
 
     companion object {
         /**

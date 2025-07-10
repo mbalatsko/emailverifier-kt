@@ -10,35 +10,34 @@ import okio.ByteString.Companion.encodeUtf8
 /**
  * Checks for the existence of a Gravatar associated with an email address.
  *
- * Sends an HTTP GET request to the Gravatar service for the MD5 hash of the email
- * and returns true if a custom avatar exists (i.e., the response is 200 OK and
- * the returned hash does not match the default Gravatar hash).
- *
- * @property baseURL the base URL for Gravatar avatar requests (defaults to [GRAVATAR_BASE_URL]}).
- * @property httpClient the HTTP client to use for requests (defaults to CIO engine).
+ * @property httpClient the HTTP client to use for requests.
+ * @property baseURL the base URL for Gravatar avatar requests.
  */
 class GravatarChecker(
     private val httpClient: HttpClient,
     private val baseURL: String = GRAVATAR_BASE_URL,
 ) {
     /**
-     * Determines whether a Gravatar exists for the given email.
+     * Retrieves the Gravatar URL for a given email, if it exists.
      *
-     * @param email the email address to check (case-insensitive).
-     * @return `true` if a custom Gravatar is available, `false` otherwise.
-     * @throws VerificationError if the request fails or the server returns a 5xx error.
+     * @param email the email address to check.
+     * @return the Gravatar URL as a string, or null if no custom avatar is found.
+     * @throws VerificationError if the request fails or the server returns an error.
      */
-    suspend fun hasGravatar(email: String): Boolean {
+    suspend fun getGravatarUrl(email: String): String? {
         val emailHash = email.encodeUtf8().md5().hex()
         val url = "$baseURL/$emailHash?d=404"
 
         try {
             val resp = httpClient.get(url)
-            if (resp.status.value >= 500) {
+            if (resp.status.value >= 400 && resp.status.value != 404) {
                 throw VerificationError("Gravatar server returned error: ${resp.status}")
             }
-            val respHash = resp.bodyAsText()
-            return resp.status == HttpStatusCode.OK && respHash != GRAVATAR_DEFAULT_MD5
+            return if (resp.status == HttpStatusCode.OK && resp.bodyAsText() != GRAVATAR_DEFAULT_MD5) {
+                url
+            } else {
+                null
+            }
         } catch (e: Exception) {
             throw VerificationError("Failed to connect to Gravatar", e)
         }
@@ -48,11 +47,11 @@ class GravatarChecker(
         /**
          * Default Gravatar avatar URL.
          */
-        val GRAVATAR_BASE_URL = "https://www.gravatar.com/avatar"
+        const val GRAVATAR_BASE_URL = "https://www.gravatar.com/avatar"
 
         /**
          * MD5 hash returned by Gravatar when no custom avatar is set.
          */
-        val GRAVATAR_DEFAULT_MD5 = "d5fe5cbcc31cff5f8ac010db72eb000c"
+        const val GRAVATAR_DEFAULT_MD5 = "d5fe5cbcc31cff5f8ac010db72eb000c"
     }
 }

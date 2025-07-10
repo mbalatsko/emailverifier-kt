@@ -53,17 +53,27 @@ class OnlineLFDomainsProvider(
      *
      * @return the response body as raw text.
      */
-    override suspend fun obtainData(): String = httpClient.get(url).bodyAsText()
+    override suspend fun obtainData(): String =
+        try {
+            val response = httpClient.get(url)
+            if (response.status.value >= 400) {
+                ""
+            } else {
+                response.bodyAsText()
+            }
+        } catch (e: Exception) {
+            ""
+        }
 }
 
 class OfflineLFDomainsProvider(
     private val resourcesFilePath: String,
 ) : LFDomainsProvider() {
+    private val resourceUrl = this.javaClass.getResource(resourcesFilePath)
+
     init {
-        require(
-            this.javaClass.getResource(resourcesFilePath) != null,
-        ) { "$resourcesFilePath resource does not exist" }
+        require(resourceUrl != null) { "$resourcesFilePath resource does not exist" }
     }
 
-    override suspend fun obtainData(): String = this.javaClass.getResource(resourcesFilePath)!!.readText()
+    override suspend fun obtainData(): String = resourceUrl!!.readText()
 }

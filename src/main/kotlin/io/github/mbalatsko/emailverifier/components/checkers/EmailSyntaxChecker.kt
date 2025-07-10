@@ -85,8 +85,6 @@ class EmailSyntaxChecker {
         // atext = ALPHA / DIGIT /    ; Any character except specials, space and control
         //         "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "/" / "=" / "?" /
         //         "^" / "_" / "`" / "{" / "|" / "}" / "~"
-        val atext = "[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]"
-        val dotAtomRegex = Regex("^$atext+(\\.$atext+)*\$")
         if (!dotAtomRegex.matches(username)) return false
         // No leading, trailing, or consecutive dots
         if (username.startsWith(".") || username.endsWith(".") || username.contains("..")) return false
@@ -127,15 +125,19 @@ class EmailSyntaxChecker {
             if (label.startsWith("-") || label.endsWith("-")) return false
 
             // Allow Unicode letters, digits, and hyphen (RFC 5890 for IDN, RFC 1035 for ASCII)
-            if (!label.matches(Regex("""^[\p{L}\p{N}-]+$"""))) return false
+            if (!label.matches(hostnameRegex)) return false
         }
         return true
     }
 
     companion object {
+        private const val ATEXT = "[a-zA-Z0-9!#\$%&'*+/=?^_`{|}~-]"
+        private val dotAtomRegex = Regex("^$ATEXT+(\\.$ATEXT+)*\$")
+        private val hostnameRegex = Regex("^[a-zA-Z0-9-]+$")
+
         /**
          * Regular expression for validating plus-tag syntax.
          */
-        private val plusTagRegex = Regex("""^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+$""")
+        private val plusTagRegex = Regex("^[A-Za-z0-9!#\$%&'*+/=?^_`{|}~.-]+$")
     }
 }

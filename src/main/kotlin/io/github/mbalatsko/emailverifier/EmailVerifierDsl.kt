@@ -12,6 +12,7 @@ import io.github.mbalatsko.emailverifier.components.providers.OfflineLFDomainsPr
 import io.github.mbalatsko.emailverifier.components.providers.OnlineLFDomainsProvider
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
@@ -228,83 +229,12 @@ class EmailVerifierDslBuilder {
             val freeConfig = free.build(allOffline)
             val roleBasedUsernameConfig = roleBasedUsername.build(allOffline)
 
-            val pslIndex =
-                when (registrabilityConfig.enabled) {
-                    true ->
-                        async {
-                            val domainProvider =
-                                when (registrabilityConfig.offline) {
-                                    true -> OfflineLFDomainsProvider(PslIndex.MOZILLA_PSL_RESOURCE_FILE)
-                                    false -> OnlineLFDomainsProvider(registrabilityConfig.pslUrl, currentHttpClient)
-                                }
-                            PslIndex.init(domainProvider)
-                        }
-                    false -> null
-                }
-
-            val disposableEmailChecker =
-                when (disposabilityConfig.enabled) {
-                    true ->
-                        async {
-                            val domainProvider =
-                                when (disposabilityConfig.offline) {
-                                    true -> OfflineLFDomainsProvider(DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE)
-                                    false -> OnlineLFDomainsProvider(disposabilityConfig.domainsListUrl, currentHttpClient)
-                                }
-                            DisposableEmailChecker.init(
-                                domainProvider,
-                            )
-                        }
-                    false -> null
-                }
-
-            val freeChecker =
-                when (freeConfig.enabled) {
-                    true ->
-                        async {
-                            val domainProvider =
-                                when (freeConfig.offline) {
-                                    true -> OfflineLFDomainsProvider(FreeChecker.FREE_EMAILS_LIST_RESOURCE_FILE)
-                                    false -> OnlineLFDomainsProvider(freeConfig.domainsListUrl, currentHttpClient)
-                                }
-                            FreeChecker.init(domainProvider)
-                        }
-                    false -> null
-                }
-
-            val roleBasedUsernameChecker =
-                when (roleBasedUsernameConfig.enabled) {
-                    true ->
-                        async {
-                            val domainProvider =
-                                when (freeConfig.offline) {
-                                    true -> OfflineLFDomainsProvider(RoleBasedUsernameChecker.ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE)
-                                    false -> OnlineLFDomainsProvider(roleBasedUsernameConfig.usernamesListUrl, currentHttpClient)
-                                }
-                            RoleBasedUsernameChecker.init(
-                                domainProvider,
-                            )
-                        }
-                    false -> null
-                }
-
-            val mxRecordChecker =
-                when (mxRecordConfig.enabled) {
-                    true ->
-                        MxRecordChecker(
-                            GoogleDoHLookupBackend(
-                                currentHttpClient,
-                                mxRecordConfig.dohServerEndpoint,
-                            ),
-                        )
-                    false -> null
-                }
-
-            val gravatarChecker =
-                when (gravatarConfig.enabled) {
-                    true -> GravatarChecker(currentHttpClient)
-                    false -> null
-                }
+            val pslIndex = createPslIndex(registrabilityConfig, currentHttpClient)
+            val disposableEmailChecker = createDisposableEmailChecker(disposabilityConfig, currentHttpClient)
+            val freeChecker = createFreeChecker(freeConfig, currentHttpClient)
+            val roleBasedUsernameChecker = createRoleBasedUsernameChecker(roleBasedUsernameConfig, currentHttpClient)
+            val mxRecordChecker = createMxRecordChecker(mxRecordConfig, currentHttpClient)
+            val gravatarChecker = createGravatarChecker(gravatarConfig, currentHttpClient)
 
             EmailVerifier(
                 emailSyntaxChecker,
@@ -316,6 +246,92 @@ class EmailVerifierDslBuilder {
                 roleBasedUsernameChecker?.await(),
             )
         }
+
+    private fun CoroutineScope.createPslIndex(
+        config: RegistrabilityConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        async {
+            val provider =
+                if (config.offline) {
+                    OfflineLFDomainsProvider(PslIndex.MOZILLA_PSL_RESOURCE_FILE)
+                } else {
+                    OnlineLFDomainsProvider(config.pslUrl, httpClient)
+                }
+            PslIndex.init(provider)
+        }
+    } else {
+        null
+    }
+
+    private fun CoroutineScope.createDisposableEmailChecker(
+        config: DisposabilityConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        async {
+            val provider =
+                if (config.offline) {
+                    OfflineLFDomainsProvider(DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE)
+                } else {
+                    OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
+                }
+            DisposableEmailChecker.init(provider)
+        }
+    } else {
+        null
+    }
+
+    private fun CoroutineScope.createFreeChecker(
+        config: FreeConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        async {
+            val provider =
+                if (config.offline) {
+                    OfflineLFDomainsProvider(FreeChecker.FREE_EMAILS_LIST_RESOURCE_FILE)
+                } else {
+                    OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
+                }
+            FreeChecker.init(provider)
+        }
+    } else {
+        null
+    }
+
+    private fun CoroutineScope.createRoleBasedUsernameChecker(
+        config: RoleBasedUsernameConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        async {
+            val provider =
+                if (config.offline) {
+                    OfflineLFDomainsProvider(RoleBasedUsernameChecker.ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE)
+                } else {
+                    OnlineLFDomainsProvider(config.usernamesListUrl, httpClient)
+                }
+            RoleBasedUsernameChecker.init(provider)
+        }
+    } else {
+        null
+    }
+
+    private fun createMxRecordChecker(
+        config: MxRecordConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        MxRecordChecker(GoogleDoHLookupBackend(httpClient, config.dohServerEndpoint))
+    } else {
+        null
+    }
+
+    private fun createGravatarChecker(
+        config: GravatarConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        GravatarChecker(httpClient)
+    } else {
+        null
+    }
 }
 
 /**

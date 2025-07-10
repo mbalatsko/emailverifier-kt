@@ -8,8 +8,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class GoogleDoHLookupBackendTest {
@@ -18,7 +18,7 @@ class GoogleDoHLookupBackendTest {
         status: HttpStatusCode = HttpStatusCode.OK,
     ) = HttpClient(MockEngine) {
         engine {
-            addHandler { request ->
+            addHandler {
                 respond(
                     content = responseJson,
                     status = status,
@@ -29,40 +29,38 @@ class GoogleDoHLookupBackendTest {
     }
 
     @Test
-    fun `hasMxRecords returns true when Answer array contains MX entries`() =
+    fun `getMxRecords returns sorted records`() =
         runTest {
             val json =
                 """
                 {
                   "Answer": [
-                    { "name":"example.com.","type":15,"data":"mx1.example.com." },
-                    { "name":"example.com.","type":15,"data":"mx2.example.com." }
+                    { "name":"example.com.","type":15,"data":"20 mx2.example.com." },
+                    { "name":"example.com.","type":15,"data":"10 mx1.example.com." }
                   ]
                 }
                 """.trimIndent()
-
-            val backend =
-                GoogleDoHLookupBackend(
-                    baseURL = "https://dns.google/resolve",
-                    httpClient = mockClient(json),
-                )
-
-            assertTrue(backend.hasMxRecords("example.com"))
+            val backend = GoogleDoHLookupBackend(httpClient = mockClient(json))
+            val records = backend.getMxRecords("example.com")
+            assertEquals(
+                listOf(
+                    MxRecord("mx1.example.com", 10),
+                    MxRecord("mx2.example.com", 20),
+                ),
+                records,
+            )
         }
 
     @Test
-    fun `hasMxRecords returns false when Answer array is empty`() =
+    fun `getMxRecords returns empty list for no MX records`() =
         runTest {
             val json = """{ "Answer": [] }"""
-            val backend =
-                GoogleDoHLookupBackend(
-                    httpClient = mockClient(json),
-                )
-            assertFalse(backend.hasMxRecords("example.org"))
+            val backend = GoogleDoHLookupBackend(httpClient = mockClient(json))
+            assertTrue(backend.getMxRecords("example.org").isEmpty())
         }
 
     @Test
-    fun `hasMxRecords returns false when Answer contains non-MX types`() =
+    fun `getMxRecords filters non-MX records`() =
         runTest {
             val json =
                 """
@@ -72,48 +70,34 @@ class GoogleDoHLookupBackendTest {
                   ]
                 }
                 """.trimIndent()
-
-            val backend =
-                GoogleDoHLookupBackend(
-                    httpClient = mockClient(json),
-                )
-            assertFalse(backend.hasMxRecords("example.com"))
+            val backend = GoogleDoHLookupBackend(httpClient = mockClient(json))
+            assertTrue(backend.getMxRecords("example.com").isEmpty())
         }
 
     @Test
-    fun `hasMxRecords throws VerificationError on 5xx error`() =
+    fun `getMxRecords throws VerificationError on 5xx error`() =
         runTest {
-            val mockEngine =
-                MockEngine {
-                    respondError(HttpStatusCode.InternalServerError)
-                }
+            val mockEngine = MockEngine { respondError(HttpStatusCode.InternalServerError) }
             val client = HttpClient(mockEngine)
             val backend = GoogleDoHLookupBackend(client)
-
             assertFailsWith<VerificationError> {
-                backend.hasMxRecords("example.com")
+                backend.getMxRecords("example.com")
             }
         }
 }
 
 class MxRecordCheckerTest {
     private class FakeDnsBackend(
-        private val hasMx: Boolean,
+        private val records: List<MxRecord>,
     ) : DnsLookupBackend {
-        override suspend fun hasMxRecords(hostname: String): Boolean = hasMx
+        override suspend fun getMxRecords(hostname: String): List<MxRecord> = records
     }
 
     @Test
-    fun `isPresent returns true when backend has MX`() =
+    fun `getRecords returns records from backend`() =
         runTest {
-            val checker = MxRecordChecker(FakeDnsBackend(true))
-            assertTrue(checker.isPresent("any.domain"))
-        }
-
-    @Test
-    fun `isPresent returns false when backend has no MX`() =
-        runTest {
-            val checker = MxRecordChecker(FakeDnsBackend(false))
-            assertFalse(checker.isPresent("any.domain"))
+            val expectedRecords = listOf(MxRecord("mx.example.com", 10))
+            val checker = MxRecordChecker(FakeDnsBackend(expectedRecords))
+            assertEquals(expectedRecords, checker.getRecords("any.domain"))
         }
 }
