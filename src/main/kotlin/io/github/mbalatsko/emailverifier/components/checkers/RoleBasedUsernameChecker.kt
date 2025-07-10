@@ -12,26 +12,15 @@ import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
  * @property domainsProvider source of role-based usernames.
  */
 class RoleBasedUsernameChecker(
-    val domainsProvider: DomainsProvider,
-) {
-    private var roleBasedUsernamesSet = emptySet<String>()
-
-    /**
-     * Loads and indexes the role-based username list from the [domainsProvider].
-     *
-     * Must be called before invoking [isRoleBased].
-     */
-    suspend fun loadData() {
-        roleBasedUsernamesSet = domainsProvider.provide()
-    }
-
+    domainsProvider: DomainsProvider,
+) : BaseChecker(domainsProvider) {
     /**
      * Determines if the specified username is recognized as role-based.
      *
      * @param username the username of an email address.
      * @return `true` if the username is in the role-based list.
      */
-    fun isRoleBased(username: String): Boolean = username in roleBasedUsernamesSet
+    fun isRoleBased(username: String): Boolean = username in dataSet
 
     companion object {
         /**

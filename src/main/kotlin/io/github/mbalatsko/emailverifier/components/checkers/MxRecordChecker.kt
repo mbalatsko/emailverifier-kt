@@ -8,30 +8,30 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
+ * Represents a DNS MX (Mail Exchange) record.
+ * @property exchange the hostname of the mail server.
+ * @property priority the preference value for this record (lower is more preferred).
+ */
+data class MxRecord(
+    val exchange: String,
+    val priority: Int,
+)
+
+/**
  * Interface for DNS MX record lookup backends.
  */
 interface DnsLookupBackend {
     /**
-     * Checks if the given hostname has one or more MX records.
+     * Retrieves the MX records for a given hostname.
      *
      * @param hostname the domain to query.
-     * @return `true` if MX records are present, `false` otherwise.
+     * @return a list of [MxRecord]s, sorted by priority.
      */
-    suspend fun hasMxRecords(hostname: String): Boolean
+    suspend fun getMxRecords(hostname: String): List<MxRecord>
 }
 
 /**
  * Implementation of [DnsLookupBackend] using Google's DNS-over-HTTPS (DoH) API.
- *
- * Issues HTTP GET requests to a URL of the form:
- * `[baseURL]?name=<hostname>&type=MX`
- *
- * Expects a JSON response containing an optional `Answer` array.
- * Each element of `Answer` must include at minimum: `name` (String), `type` (Int), and `data` (String).
- * A non-empty `Answer` array with type 15 entries (MX) indicates presence of MX records.
- *
- * @property baseURL the base URL for the DoH endpoint (defaults to Google's resolver).
- * @property httpClient HTTP client used to get Google-like DoH response from [baseURL]?name=<hostname>&type=MX
  */
 class GoogleDoHLookupBackend(
     private val httpClient: HttpClient,
@@ -52,22 +52,32 @@ class GoogleDoHLookupBackend(
     private val json = Json { ignoreUnknownKeys = true }
 
     /**
-     * Queries the DoH endpoint for MX records associated with the given hostname.
+     * Queries the DoH endpoint for MX records and parses them.
      *
      * @param hostname the domain to query.
-     * @return `true` if at least one MX record is found, `false` otherwise.
-     * @throws VerificationError if the request fails or the server returns a 5xx error.
+     * @return a list of [MxRecord]s sorted by priority.
+     * @throws VerificationError if the request fails or the server returns an error.
      */
-    override suspend fun hasMxRecords(hostname: String): Boolean {
+    override suspend fun getMxRecords(hostname: String): List<MxRecord> {
         val url = "$baseURL?name=$hostname&type=MX"
         try {
             val resp = httpClient.get(url)
-            if (resp.status.value >= 500) {
+            if (resp.status.value >= 400) {
                 throw VerificationError("DoH server returned error: ${resp.status}")
             }
             val raw = resp.bodyAsText()
             val dnsResponse = json.decodeFromString<DnsResponse>(raw)
-            return dnsResponse.Answer?.any { it.type == MX_TYPE } == true
+
+            return dnsResponse.Answer
+                ?.filter { it.type == MX_TYPE }
+                ?.mapNotNull {
+                    val parts = it.data.split(" ")
+                    if (parts.size == 2) {
+                        MxRecord(exchange = parts[1].removeSuffix("."), priority = parts[0].toInt())
+                    } else {
+                        null
+                    }
+                }?.sortedBy { -it.priority } ?: emptyList()
         } catch (e: Exception) {
             throw VerificationError("Failed to connect to DoH server", e)
         }
@@ -88,13 +98,13 @@ class GoogleDoHLookupBackend(
  * @property dnsLookupBackend the backend used to perform DNS queries.
  */
 class MxRecordChecker(
-    val dnsLookupBackend: DnsLookupBackend,
+    private val dnsLookupBackend: DnsLookupBackend,
 ) {
     /**
-     * Determines whether MX records exist for the given hostname.
+     * Retrieves MX records for the given hostname.
      *
      * @param hostname the domain to check.
-     * @return `true` if MX records are present, `false` otherwise.
+     * @return a list of [MxRecord]s.
      */
-    suspend fun isPresent(hostname: String): Boolean = dnsLookupBackend.hasMxRecords(hostname)
+    suspend fun getRecords(hostname: String): List<MxRecord> = dnsLookupBackend.getMxRecords(hostname)
 }

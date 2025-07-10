@@ -228,94 +228,143 @@ class EmailVerifierDslBuilder {
             val freeConfig = free.build(allOffline)
             val roleBasedUsernameConfig = roleBasedUsername.build(allOffline)
 
-            val pslIndex =
-                when (registrabilityConfig.enabled) {
-                    true ->
-                        async {
-                            val domainProvider =
-                                when (registrabilityConfig.offline) {
-                                    true -> OfflineLFDomainsProvider(PslIndex.MOZILLA_PSL_RESOURCE_FILE)
-                                    false -> OnlineLFDomainsProvider(registrabilityConfig.pslUrl, currentHttpClient)
-                                }
-                            PslIndex.init(domainProvider)
-                        }
-                    false -> null
-                }
-
-            val disposableEmailChecker =
-                when (disposabilityConfig.enabled) {
-                    true ->
-                        async {
-                            val domainProvider =
-                                when (disposabilityConfig.offline) {
-                                    true -> OfflineLFDomainsProvider(DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE)
-                                    false -> OnlineLFDomainsProvider(disposabilityConfig.domainsListUrl, currentHttpClient)
-                                }
-                            DisposableEmailChecker.init(
-                                domainProvider,
-                            )
-                        }
-                    false -> null
-                }
-
-            val freeChecker =
-                when (freeConfig.enabled) {
-                    true ->
-                        async {
-                            val domainProvider =
-                                when (freeConfig.offline) {
-                                    true -> OfflineLFDomainsProvider(FreeChecker.FREE_EMAILS_LIST_RESOURCE_FILE)
-                                    false -> OnlineLFDomainsProvider(freeConfig.domainsListUrl, currentHttpClient)
-                                }
-                            FreeChecker.init(domainProvider)
-                        }
-                    false -> null
-                }
-
-            val roleBasedUsernameChecker =
-                when (roleBasedUsernameConfig.enabled) {
-                    true ->
-                        async {
-                            val domainProvider =
-                                when (freeConfig.offline) {
-                                    true -> OfflineLFDomainsProvider(RoleBasedUsernameChecker.ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE)
-                                    false -> OnlineLFDomainsProvider(roleBasedUsernameConfig.usernamesListUrl, currentHttpClient)
-                                }
-                            RoleBasedUsernameChecker.init(
-                                domainProvider,
-                            )
-                        }
-                    false -> null
-                }
-
-            val mxRecordChecker =
-                when (mxRecordConfig.enabled) {
-                    true ->
-                        MxRecordChecker(
-                            GoogleDoHLookupBackend(
-                                currentHttpClient,
-                                mxRecordConfig.dohServerEndpoint,
-                            ),
-                        )
-                    false -> null
-                }
-
-            val gravatarChecker =
-                when (gravatarConfig.enabled) {
-                    true -> GravatarChecker(currentHttpClient)
-                    false -> null
-                }
+            val pslIndex = async { createPslIndex(registrabilityConfig, currentHttpClient) }
+            val disposableEmailChecker = async { createDisposableEmailChecker(disposabilityConfig, currentHttpClient) }
+            val freeChecker = async { createFreeChecker(freeConfig, currentHttpClient) }
+            val roleBasedUsernameChecker = async { createRoleBasedUsernameChecker(roleBasedUsernameConfig, currentHttpClient) }
+            val mxRecordChecker = createMxRecordChecker(mxRecordConfig, currentHttpClient)
+            val gravatarChecker = createGravatarChecker(gravatarConfig, currentHttpClient)
 
             EmailVerifier(
                 emailSyntaxChecker,
-                pslIndex?.await(),
+                pslIndex.await(),
                 mxRecordChecker,
-                disposableEmailChecker?.await(),
+                disposableEmailChecker.await(),
                 gravatarChecker,
-                freeChecker?.await(),
-                roleBasedUsernameChecker?.await(),
+                freeChecker.await(),
+                roleBasedUsernameChecker.await(),
             )
         }
+
+    /**
+     * Creates a [PslIndex] instance based on the provided configuration.
+     *
+     * @param config The registrability configuration.
+     * @param httpClient The HTTP client for online data fetching.
+     * @return [PslIndex] or null if the check is disabled.
+     */
+    private suspend fun createPslIndex(
+        config: RegistrabilityConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        val provider =
+            if (config.offline) {
+                OfflineLFDomainsProvider(PslIndex.MOZILLA_PSL_RESOURCE_FILE)
+            } else {
+                OnlineLFDomainsProvider(config.pslUrl, httpClient)
+            }
+        PslIndex.init(provider)
+    } else {
+        null
+    }
+
+    /**
+     * Creates a [DisposableEmailChecker] instance based on the provided configuration.
+     *
+     * @param config The disposability configuration.
+     * @param httpClient The HTTP client for online data fetching.
+     * @return Ac[DisposableEmailChecker] or null if the check is disabled.
+     */
+    private suspend fun createDisposableEmailChecker(
+        config: DisposabilityConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        val provider =
+            if (config.offline) {
+                OfflineLFDomainsProvider(DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE)
+            } else {
+                OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
+            }
+        DisposableEmailChecker.init(provider)
+    } else {
+        null
+    }
+
+    /**
+     * Creates a [FreeChecker] instance based on the provided configuration.
+     *
+     * @param config The free email check configuration.
+     * @param httpClient The HTTP client for online data fetching.
+     * @return [FreeChecker] or null if the check is disabled.
+     */
+    private suspend fun createFreeChecker(
+        config: FreeConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        val provider =
+            if (config.offline) {
+                OfflineLFDomainsProvider(FreeChecker.FREE_EMAILS_LIST_RESOURCE_FILE)
+            } else {
+                OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
+            }
+        FreeChecker.init(provider)
+    } else {
+        null
+    }
+
+    /**
+     * Creates a [RoleBasedUsernameChecker] instance based on the provided configuration.
+     *
+     * @param config The role-based username configuration.
+     * @param httpClient The HTTP client for online data fetching.
+     * @return [RoleBasedUsernameChecker] or null if the check is disabled.
+     */
+    private suspend fun createRoleBasedUsernameChecker(
+        config: RoleBasedUsernameConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        val provider =
+            if (config.offline) {
+                OfflineLFDomainsProvider(RoleBasedUsernameChecker.ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE)
+            } else {
+                OnlineLFDomainsProvider(config.usernamesListUrl, httpClient)
+            }
+        RoleBasedUsernameChecker.init(provider)
+    } else {
+        null
+    }
+
+    /**
+     * Creates an [MxRecordChecker] instance based on the provided configuration.
+     *
+     * @param config The MX record configuration.
+     * @param httpClient The HTTP client for DNS-over-HTTPS queries.
+     * @return An [MxRecordChecker] or null if the check is disabled.
+     */
+    private fun createMxRecordChecker(
+        config: MxRecordConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        MxRecordChecker(GoogleDoHLookupBackend(httpClient, config.dohServerEndpoint))
+    } else {
+        null
+    }
+
+    /**
+     * Creates a [GravatarChecker] instance based on the provided configuration.
+     *
+     * @param config The Gravatar configuration.
+     * @param httpClient The HTTP client for Gravatar requests.
+     * @return A [GravatarChecker] or null if the check is disabled.
+     */
+    private fun createGravatarChecker(
+        config: GravatarConfig,
+        httpClient: HttpClient,
+    ) = if (config.enabled) {
+        GravatarChecker(httpClient)
+    } else {
+        null
+    }
 }
 
 /**

@@ -52,6 +52,21 @@ class DomainProvidersTest {
         }
 
     @Test
+    fun `online provider returns empty set for empty response`() =
+        runTest {
+            val mockEngine =
+                MockEngine {
+                    respond("", headers = headersOf("Content-Type" to listOf("text/plain")))
+                }
+
+            val client = HttpClient(mockEngine)
+            val provider = OnlineLFDomainsProvider("https://mock.url", client)
+
+            val result = provider.provide()
+            assertTrue(result.isEmpty())
+        }
+
+    @Test
     fun `offline provider returns expected data`() =
         runTest {
             val provider = OfflineLFDomainsProvider("/offline-data/disposable.txt")

@@ -74,52 +74,39 @@ class PslIndex(
     }
 
     /**
-     * Determines whether the given hostname is registrable.
+     * Finds the registrable domain for a given hostname based on PSL rules.
      *
-     * A hostname is registrable if it has more labels than the matching PSL suffix.
-     * For example, `example.co.uk` is registrable, but `co.uk` is not.
+     * A registrable domain is the portion of a domain name that is not part of a public suffix.
+     * For example, for "www.example.co.uk", "example.co.uk" is the registrable domain.
      *
-     * @param hostname the domain name to check.
-     * @return `true` if registrable, `false` otherwise.
+     * @param hostname the full hostname to check (e.g., "www.example.co.uk").
+     * @return the registrable domain as a string, or null if the hostname itself is a public suffix
+     *   or cannot be determined (e.g., a TLD).
      */
-    fun isHostnameRegistrable(hostname: String): Boolean {
+    fun findRegistrableDomain(hostname: String): String? {
         val labels =
             hostname
-                .trim()
-                .lowercase()
                 .split(".")
                 .reversed()
-        // TLDs are not registrable in general
-        if (labels.size == 1) {
-            return false
-        }
-        val matchLen = findMatchingRule(labels)
-        return matchLen != null && labels.size > matchLen
-    }
+        if (labels.size <= 1) return null // TLDs are not registrable
 
-    /**
-     * Computes the length (in labels) of the best matching PSL rule.
-     *
-     * Applies standard PSL matching semantics: longest match, wildcard support, and exception handling.
-     *
-     * @param labels reversed domain labels (TLD first).
-     * @return length of the matching rule in labels, or `null` if no match found.
-     */
-    private fun findMatchingRule(labels: List<String>): Int? {
         var node = root
+
         var matchLen: Int? = null
-        var exceptionMatchLen: Int? = null
+        var eTld: String? = null
         for ((i, label) in labels.withIndex()) {
             val next = node.children[label] ?: node.children["*"]
+            eTld = if (eTld != null) "$label.$eTld" else label
             if (next == null) break
             node = next
+
             if (node.isException) {
-                exceptionMatchLen = i
+                return eTld
             } else if (node.isSuffix || node.isWildcard) {
                 matchLen = i + 1
             }
         }
-        return exceptionMatchLen ?: matchLen
+        return if (matchLen != null && labels.size > matchLen) eTld else null
     }
 
     companion object {

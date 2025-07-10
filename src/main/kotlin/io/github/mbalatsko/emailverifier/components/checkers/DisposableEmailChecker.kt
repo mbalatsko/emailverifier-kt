@@ -10,19 +10,8 @@ import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
  * typically from public blacklists such as `disposable-email-domains`.
  */
 class DisposableEmailChecker(
-    val domainsProvider: DomainsProvider,
-) {
-    private var disposableDomainsSet = emptySet<String>()
-
-    /**
-     * Loads and indexes the disposable domain list from the [domainsProvider].
-     *
-     * Must be called before using [isDisposable].
-     */
-    suspend fun loadData() {
-        disposableDomainsSet = domainsProvider.provide()
-    }
-
+    domainsProvider: DomainsProvider,
+) : BaseChecker(domainsProvider) {
     /**
      * Determines if the given hostname or any of its parent domains (down to second level)
      * are listed as disposable.
@@ -39,7 +28,7 @@ class DisposableEmailChecker(
         // Check all subdomains of given hostname up to level 2 (e.g. google.com)
         for (i in 0..labels.size - 2) {
             val partialHostname = labels.slice(i..labels.size - 1).joinToString(".")
-            if (partialHostname in disposableDomainsSet) {
+            if (partialHostname in dataSet) {
                 return true
             }
         }
@@ -63,6 +52,13 @@ class DisposableEmailChecker(
         const val DISPOSABLE_EMAILS_LIST_NORMAL_URL =
             "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.txt"
 
+        /**
+         * Convenience initializer that creates a [DisposableEmailChecker] and immediately
+         * loads its domain data.
+         *
+         * @param domainsProvider the provider for disposable email domains.
+         * @return an initialized [DisposableEmailChecker].
+         */
         suspend fun init(domainsProvider: DomainsProvider): DisposableEmailChecker {
             val disposableEmailChecker = DisposableEmailChecker(domainsProvider)
             disposableEmailChecker.loadData()

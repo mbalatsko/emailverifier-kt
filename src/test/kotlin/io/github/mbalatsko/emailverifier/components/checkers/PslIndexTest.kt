@@ -3,8 +3,8 @@ package io.github.mbalatsko.emailverifier.components.checkers
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class PslIndexTest {
     private class TestDomainsProvider(
@@ -14,52 +14,59 @@ class PslIndexTest {
     }
 
     @Test
-    fun `basic registrability with simple suffix rules`() =
+    fun `findRegistrableDomain with simple suffix rules`() =
         runTest {
             val rules = setOf("com", "co.uk")
-            val psl = PslIndex(TestDomainsProvider(rules))
-            psl.build()
+            val psl = PslIndex.init(TestDomainsProvider(rules))
 
-            assertTrue(psl.isHostnameRegistrable("example.com"), "example.com should be registrable")
-            assertFalse(psl.isHostnameRegistrable("com"), "com should not be registrable")
-
-            assertTrue(psl.isHostnameRegistrable("foo.co.uk"), "foo.co.uk should be registrable")
-            assertFalse(psl.isHostnameRegistrable("co.uk"), "co.uk should not be registrable")
+            assertEquals("example.com", psl.findRegistrableDomain("example.com"))
+            assertNull(psl.findRegistrableDomain("com"))
+            assertEquals("foo.co.uk", psl.findRegistrableDomain("foo.co.uk"))
+            assertEquals("foo.co.uk", psl.findRegistrableDomain("bar.foo.co.uk"))
+            assertNull(psl.findRegistrableDomain("co.uk"))
         }
 
     @Test
-    fun `wildcard rules block second-level but allow deeper domains`() =
+    fun `findRegistrableDomain with wildcard rules`() =
         runTest {
             val rules = setOf("*.ck")
-            val psl = PslIndex(TestDomainsProvider(rules))
-            psl.build()
+            val psl = PslIndex.init(TestDomainsProvider(rules))
 
-            assertFalse(psl.isHostnameRegistrable("a.ck"), "a.ck should not be registrable under *.ck")
-            assertTrue(psl.isHostnameRegistrable("b.a.ck"), "b.a.ck should be registrable under *.ck")
+            assertNull(psl.findRegistrableDomain("a.ck"))
+            assertEquals("b.a.ck", psl.findRegistrableDomain("b.a.ck"))
         }
 
     @Test
-    fun `exception rules override suffix rules`() =
+    fun `findRegistrableDomain with exception rules`() =
         runTest {
             val rules = setOf("*.ck", "!pref.ck")
-            val psl = PslIndex(TestDomainsProvider(rules))
-            psl.build()
+            val psl = PslIndex.init(TestDomainsProvider(rules))
 
-            assertFalse(psl.isHostnameRegistrable("foo.ck"), "foo.ck should not be registrable under *.ck")
-            // pref.ck is an exception, so it becomes registrable
-            assertTrue(psl.isHostnameRegistrable("pref.ck"), "pref.ck should be registrable due to exception")
-            // But its subdomains still follow the wildcard rule
-            assertTrue(psl.isHostnameRegistrable("sub.pref.ck"), "sub.pref.ck should be registrable as deeper domain")
+            assertNull(psl.findRegistrableDomain("foo.ck"))
+            assertEquals("pref.ck", psl.findRegistrableDomain("pref.ck"))
+            assertEquals("pref.ck", psl.findRegistrableDomain("b.pref.ck"))
         }
 
     @Test
-    fun `no match means non-registrable`() =
+    fun `findRegistrableDomain with no matching rule`() =
         runTest {
             val rules = setOf("net")
-            val psl = PslIndex(TestDomainsProvider(rules))
-            psl.build()
+            val psl = PslIndex.init(TestDomainsProvider(rules))
+            assertNull(psl.findRegistrableDomain("example.org"))
+        }
 
-            // no rule for 'org'
-            assertFalse(psl.isHostnameRegistrable("example.org"), "example.org should not be registrable without matching rule")
+    @Test
+    fun `findRegistrableDomain with complex scenarios`() =
+        runTest {
+            val rules = setOf("*.platform.sh", "!w3.platform.sh", "com.ac")
+            val psl = PslIndex.init(TestDomainsProvider(rules))
+
+            assertEquals("w3.platform.sh", psl.findRegistrableDomain("w3.platform.sh"))
+            assertEquals("w3.platform.sh", psl.findRegistrableDomain("sub.w3.platform.sh"))
+            assertNull(psl.findRegistrableDomain("platform.sh"))
+            assertNull(psl.findRegistrableDomain("example.platform.sh"))
+            assertEquals("sub.example.platform.sh", psl.findRegistrableDomain("sub.example.platform.sh"))
+            assertEquals("example.com.ac", psl.findRegistrableDomain("example.com.ac"))
+            assertEquals("example.com.ac", psl.findRegistrableDomain("sub.example.com.ac"))
         }
 }

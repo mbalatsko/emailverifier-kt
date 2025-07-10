@@ -4,6 +4,7 @@ import io.github.mbalatsko.emailverifier.components.checkers.DisposableEmailChec
 import io.github.mbalatsko.emailverifier.components.checkers.DnsLookupBackend
 import io.github.mbalatsko.emailverifier.components.checkers.EmailSyntaxChecker
 import io.github.mbalatsko.emailverifier.components.checkers.FreeChecker
+import io.github.mbalatsko.emailverifier.components.checkers.MxRecord
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.checkers.RoleBasedUsernameChecker
@@ -15,126 +16,105 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class EmailVerifierLocalTest {
-    /**
-     * Dummy DomainsProvider returning a fixed list.
-     */
     private class FixedListProvider(
         private val items: Set<String>,
     ) : DomainsProvider {
         override suspend fun provide(): Set<String> = items
     }
 
-    /**
-     * Fake DNS backend for integration: returns configured MX existence.
-     */
     private class FakeDnsBackend(
-        private val hasMx: Boolean,
+        private val mxRecords: List<MxRecord>,
     ) : DnsLookupBackend {
-        override suspend fun hasMxRecords(hostname: String): Boolean = hasMx
+        override suspend fun getMxRecords(hostname: String): List<MxRecord> = mxRecords
     }
 
-    private suspend fun buildVerifier(hasMx: Boolean): EmailVerifier =
+    private suspend fun buildVerifier(mxRecords: List<MxRecord>): EmailVerifier =
         EmailVerifier(
             emailSyntaxChecker = EmailSyntaxChecker(),
             pslIndex = PslIndex.init(FixedListProvider(setOf("com", "co.uk"))),
-            mxRecordChecker = MxRecordChecker(FakeDnsBackend(hasMx)),
-            disposableEmailChecker =
-                DisposableEmailChecker.init(
-                    FixedListProvider(setOf("disposable.com")),
-                ),
+            mxRecordChecker = MxRecordChecker(FakeDnsBackend(mxRecords)),
+            disposableEmailChecker = DisposableEmailChecker.init(FixedListProvider(setOf("disposable.com"))),
             gravatarChecker = null,
-            freeChecker =
-                FreeChecker.init(
-                    FixedListProvider(setOf("free.com")),
-                ),
-            roleBasedUsernameChecker =
-                RoleBasedUsernameChecker.init(
-                    FixedListProvider(setOf("role")),
-                ),
+            freeChecker = FreeChecker.init(FixedListProvider(setOf("free.com"))),
+            roleBasedUsernameChecker = RoleBasedUsernameChecker.init(FixedListProvider(setOf("role"))),
         )
 
     @Test
-    fun `integration passes all checks`() =
+    fun `isLikelyDeliverable returns true when all checks pass`() =
         runTest {
-            val verifier = buildVerifier(hasMx = true)
+            val verifier = buildVerifier(mxRecords = listOf(MxRecord("mx.example.com", 10)))
             val result = verifier.verify("user@example.com")
-            assertTrue(result.syntaxCheck == CheckResult.PASSED)
-            assertTrue(result.registrabilityCheck == CheckResult.PASSED)
-            assertTrue(result.mxRecordCheck == CheckResult.PASSED)
-            assertTrue(result.disposabilityCheck == CheckResult.PASSED)
-            assertTrue(result.freeCheck == CheckResult.PASSED)
-            assertTrue(result.roleBasedUsernameCheck == CheckResult.PASSED)
-            assertTrue(result.ok())
+            assertTrue(result.isLikelyDeliverable())
+            assertTrue(result.syntax is CheckResult.Passed)
+            assertTrue(result.registrability is CheckResult.Passed)
+            assertTrue(result.mx is CheckResult.Passed)
+            assertTrue(result.disposable is CheckResult.Passed)
+            assertTrue(result.free is CheckResult.Passed)
+            assertTrue(result.roleBasedUsername is CheckResult.Passed)
         }
 
     @Test
-    fun `integration fails syntax`() =
+    fun `isLikelyDeliverable returns false when syntax fails`() =
         runTest {
-            val verifier = buildVerifier(hasMx = true)
+            val verifier = buildVerifier(mxRecords = emptyList())
             val result = verifier.verify("bad@@example.com")
-            assertFalse(result.ok())
-            assertTrue(result.syntaxCheck == CheckResult.FAILED)
-            // other checks should be SKIPPED because syntax failed before them
-            assertTrue(result.registrabilityCheck == CheckResult.SKIPPED)
-            assertTrue(result.mxRecordCheck == CheckResult.SKIPPED)
-            assertTrue(result.disposabilityCheck == CheckResult.SKIPPED)
-            assertTrue(result.freeCheck == CheckResult.SKIPPED)
-            assertTrue(result.roleBasedUsernameCheck == CheckResult.SKIPPED)
+            assertFalse(result.isLikelyDeliverable())
+            assertTrue(result.syntax is CheckResult.Failed)
+            assertTrue(result.registrability is CheckResult.Skipped)
+            assertTrue(result.mx is CheckResult.Skipped)
         }
 
     @Test
-    fun `integration fails registrability`() =
+    fun `isLikelyDeliverable returns false when registrability fails`() =
         runTest {
-            val verifier = buildVerifier(hasMx = true)
+            val verifier = buildVerifier(mxRecords = listOf(MxRecord("mx.co.uk", 10)))
             val result = verifier.verify("user@co.uk")
-            assertFalse(result.ok())
-            assertTrue(result.syntaxCheck == CheckResult.PASSED)
-            assertTrue(result.registrabilityCheck == CheckResult.FAILED)
+            assertFalse(result.isLikelyDeliverable())
+            assertTrue(result.registrability is CheckResult.Failed)
         }
 
     @Test
-    fun `integration fails mx record`() =
+    fun `isLikelyDeliverable returns false when mx record check fails`() =
         runTest {
-            val verifier = buildVerifier(hasMx = false)
+            val verifier = buildVerifier(mxRecords = emptyList())
             val result = verifier.verify("user@example.com")
-            assertFalse(result.ok())
-            assertTrue(result.syntaxCheck == CheckResult.PASSED)
-            assertTrue(result.mxRecordCheck == CheckResult.FAILED)
+            assertFalse(result.isLikelyDeliverable())
+            assertTrue(result.mx is CheckResult.Failed)
         }
 
     @Test
-    fun `integration fails disposability`() =
+    fun `isLikelyDeliverable returns false when disposability fails`() =
         runTest {
-            val verifier = buildVerifier(hasMx = true)
+            val verifier = buildVerifier(mxRecords = listOf(MxRecord("mx.disposable.com", 10)))
             val result = verifier.verify("user@disposable.com")
-            assertFalse(result.ok())
-            assertTrue(result.disposabilityCheck == CheckResult.FAILED)
+            assertFalse(result.isLikelyDeliverable())
+            assertTrue(result.disposable is CheckResult.Failed)
         }
 
     @Test
-    fun `integration passes, free fails`() =
+    fun `isLikelyDeliverable is true when free check fails`() =
         runTest {
-            val verifier = buildVerifier(hasMx = true)
+            val verifier = buildVerifier(mxRecords = listOf(MxRecord("mx.free.com", 10)))
             val result = verifier.verify("user@free.com")
-            assertTrue(result.ok())
-            assertTrue(result.freeCheck == CheckResult.FAILED)
+            assertTrue(result.isLikelyDeliverable()) // free is not a strong indicator
+            assertTrue(result.free is CheckResult.Failed)
         }
 
     @Test
-    fun `integration passes, role-based fails`() =
+    fun `isLikelyDeliverable is true when role-based check fails`() =
         runTest {
-            val verifier = buildVerifier(hasMx = true)
+            val verifier = buildVerifier(mxRecords = listOf(MxRecord("mx.example.com", 10)))
             val result = verifier.verify("role@example.com")
-            assertTrue(result.ok())
-            assertTrue(result.roleBasedUsernameCheck == CheckResult.FAILED)
+            assertTrue(result.isLikelyDeliverable()) // role-based is not a strong indicator
+            assertTrue(result.roleBasedUsername is CheckResult.Failed)
         }
 
     private class ErrorDnsBackend : DnsLookupBackend {
-        override suspend fun hasMxRecords(hostname: String): Boolean = throw VerificationError("test error")
+        override suspend fun getMxRecords(hostname: String): List<MxRecord> = throw VerificationError("test error")
     }
 
     @Test
-    fun `integration returns errored`() =
+    fun `check returns errored on backend error`() =
         runTest {
             val verifier =
                 EmailVerifier(
@@ -147,11 +127,11 @@ class EmailVerifierLocalTest {
                     roleBasedUsernameChecker = null,
                 )
             val result = verifier.verify("user@example.com")
-            assertTrue(result.mxRecordCheck == CheckResult.ERRORED)
+            assertTrue(result.mx is CheckResult.Errored)
         }
 
     @Test
-    fun `integration skips disabled checks`() =
+    fun `disabled checks are skipped`() =
         runTest {
             val verifier =
                 emailVerifier {
@@ -163,118 +143,116 @@ class EmailVerifierLocalTest {
                     roleBasedUsername { enabled = false }
                 }
             val result = verifier.verify("user@anydomain.test")
-            // Syntax still runs
-            assertTrue(result.syntaxCheck == CheckResult.PASSED)
-            // All others skipped
-            assertTrue(result.registrabilityCheck == CheckResult.SKIPPED)
-            assertTrue(result.mxRecordCheck == CheckResult.SKIPPED)
-            assertTrue(result.disposabilityCheck == CheckResult.SKIPPED)
-            assertTrue(result.freeCheck == CheckResult.SKIPPED)
-            assertTrue(result.ok())
+            assertTrue(result.syntax is CheckResult.Passed)
+            assertTrue(result.registrability is CheckResult.Skipped)
+            assertTrue(result.mx is CheckResult.Skipped)
+            assertTrue(result.disposable is CheckResult.Skipped)
+            assertTrue(result.free is CheckResult.Skipped)
+            assertTrue(result.isLikelyDeliverable())
         }
 }
 
 class EmailVerifierOnlineTest {
-    val onlineEmailVerifier = runBlocking { emailVerifier { } }
+    private val onlineEmailVerifier = runBlocking { emailVerifier {} }
 
     @Test
-    fun `integration passes all checks, but fails gravatar and free`() =
+    fun `gmail passes main checks but fails free and gravatar`() =
         runTest {
             val result = onlineEmailVerifier.verify("mbalatsko@gmail.com")
-            assertTrue(result.ok())
-            assertTrue(result.gravatarCheck == CheckResult.FAILED)
-            assertTrue(result.freeCheck == CheckResult.FAILED)
-            assertTrue(result.roleBasedUsernameCheck == CheckResult.PASSED)
+            assertTrue(result.isLikelyDeliverable())
+            assertTrue(result.gravatar is CheckResult.Failed<*>)
+            assertTrue(result.free is CheckResult.Failed<*>)
+            assertTrue(result.roleBasedUsername is CheckResult.Passed<*>)
         }
 
     @Test
-    fun `integration passes free check`() =
+    fun `corporate email passes free check`() =
         runTest {
             val result = onlineEmailVerifier.verify("maksym.balatsko@blindspot.ai")
-            assertTrue(result.freeCheck == CheckResult.PASSED)
+            assertTrue(result.free is CheckResult.Passed)
         }
 
     @Test
-    fun `integration passes gravatar check`() =
+    fun `email with gravatar passes gravatar check`() =
         runTest {
             val result = onlineEmailVerifier.verify("jitewaboh@lagify.com")
-            assertTrue(result.gravatarCheck == CheckResult.PASSED)
+            assertTrue(result.gravatar is CheckResult.Passed)
         }
 
     @Test
-    fun `integration fails registrability`() =
+    fun `invalid domain fails registrability`() =
         runTest {
             val result = onlineEmailVerifier.verify("mbalatsko@invalid.invalid")
-            assertFalse(result.ok())
-            assertTrue(result.registrabilityCheck == CheckResult.FAILED)
+            assertFalse(result.isLikelyDeliverable())
+            assertTrue(result.registrability is CheckResult.Failed)
         }
 
     @Test
-    fun `integration fails mx record`() =
+    fun `domain with no mx records fails mx check`() =
         runTest {
             val result = onlineEmailVerifier.verify("mbalatsko@somethingrandom.co.uk")
-            assertFalse(result.ok())
-            assertTrue(result.mxRecordCheck == CheckResult.FAILED)
+            assertFalse(result.isLikelyDeliverable())
+            assertTrue(result.mx is CheckResult.Failed)
         }
 
     @Test
-    fun `integration fails disposability`() =
+    fun `disposable domain fails disposability check`() =
         runTest {
             val result = onlineEmailVerifier.verify("mbalatsko@simplelogin.com")
-            assertFalse(result.ok())
-            assertTrue(result.disposabilityCheck == CheckResult.FAILED)
+            assertFalse(result.isLikelyDeliverable())
+            assertTrue(result.disposable is CheckResult.Failed)
         }
 
     @Test
-    fun `integration fails role-based`() =
+    fun `role-based username fails its check`() =
         runTest {
             val result = onlineEmailVerifier.verify("admin@simplelogin.com")
-            assertTrue(result.roleBasedUsernameCheck == CheckResult.FAILED)
+            assertTrue(result.roleBasedUsername is CheckResult.Failed)
         }
 }
 
 class EmailVerifierOfflineTest {
-    val offlineEmailVerifier = runBlocking { emailVerifier { allOffline = true } }
+    private val offlineEmailVerifier = runBlocking { emailVerifier { allOffline = true } }
 
     @Test
-    fun `integration passes all checks offline, fails gravatar and free, skips online checks`() =
+    fun `offline mode works and skips online checks`() =
         runTest {
             val result = offlineEmailVerifier.verify("mbalatsko@gmail.com")
-            assertTrue(result.ok())
-            assertTrue(result.freeCheck == CheckResult.FAILED)
-            assertTrue(result.roleBasedUsernameCheck == CheckResult.PASSED)
+            assertTrue(result.isLikelyDeliverable())
+            assertTrue(result.free is CheckResult.Failed)
+            assertTrue(result.roleBasedUsername is CheckResult.Passed)
 
-            assertTrue(result.gravatarCheck == CheckResult.SKIPPED)
-            assertTrue(result.mxRecordCheck == CheckResult.SKIPPED)
+            assertTrue(result.gravatar is CheckResult.Skipped)
+            assertTrue(result.mx is CheckResult.Skipped)
         }
 
     @Test
-    fun `integration passes free check`() =
+    fun `offline free check passes for non-free domain`() =
         runTest {
             val result = offlineEmailVerifier.verify("maksym.balatsko@blindspot.ai")
-            assertTrue(result.freeCheck == CheckResult.PASSED)
+            assertTrue(result.free is CheckResult.Passed)
         }
 
     @Test
-    fun `integration fails registrability`() =
+    fun `offline registrability fails for invalid domain`() =
         runTest {
             val result = offlineEmailVerifier.verify("mbalatsko@invalid.invalid")
-            assertFalse(result.ok())
-            assertTrue(result.registrabilityCheck == CheckResult.FAILED)
+            assertFalse(result.isLikelyDeliverable())
+            assertTrue(result.registrability is CheckResult.Failed)
         }
 
     @Test
-    fun `integration fails disposability`() =
+    fun `offline disposability fails for disposable domain`() =
         runTest {
             val result = offlineEmailVerifier.verify("mbalatsko@simplelogin.com")
-            assertFalse(result.ok())
-            assertTrue(result.disposabilityCheck == CheckResult.FAILED)
+            assertFalse(result.isLikelyDeliverable())
+            assertTrue(result.disposable is CheckResult.Failed)
         }
 
     @Test
-    fun `integration fails role-based`() =
+    fun `offline role-based check fails for role-based username`() =
         runTest {
             val result = offlineEmailVerifier.verify("admin@simplelogin.com")
-            assertTrue(result.roleBasedUsernameCheck == CheckResult.FAILED)
+            assertTrue(result.roleBasedUsername is CheckResult.Failed)
         }
 }

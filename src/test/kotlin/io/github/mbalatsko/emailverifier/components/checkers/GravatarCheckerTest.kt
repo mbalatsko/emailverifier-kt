@@ -9,11 +9,12 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class GravatarCheckerTest {
     @Test
-    fun `hasGravatar returns true on first attempt`() =
+    fun `getGravatarUrl returns URL for existing gravatar`() =
         runTest {
             val mockEngine =
                 MockEngine {
@@ -21,12 +22,37 @@ class GravatarCheckerTest {
                 }
             val client = HttpClient(mockEngine)
             val checker = GravatarChecker(client)
-
-            assertTrue(checker.hasGravatar("test@example.com"))
+            assertNotNull(checker.getGravatarUrl("test@example.com"))
         }
 
     @Test
-    fun `hasGravatar throws VerificationError on 5xx error`() =
+    fun `getGravatarUrl returns null for non-existent gravatar`() =
+        runTest {
+            val mockEngine =
+                MockEngine {
+                    respond("", HttpStatusCode.NotFound)
+                }
+            val client = HttpClient(mockEngine)
+            val checker = GravatarChecker(client)
+            assertNull(checker.getGravatarUrl("test@example.com"))
+        }
+
+    @Test
+    fun `getGravatarUrl throws VerificationError on 4xx error`() =
+        runTest {
+            val mockEngine =
+                MockEngine {
+                    respondError(HttpStatusCode.BadRequest)
+                }
+            val client = HttpClient(mockEngine)
+            val checker = GravatarChecker(client)
+            assertFailsWith<VerificationError> {
+                checker.getGravatarUrl("test@example.com")
+            }
+        }
+
+    @Test
+    fun `getGravatarUrl throws VerificationError on 5xx error`() =
         runTest {
             val mockEngine =
                 MockEngine {
@@ -34,9 +60,8 @@ class GravatarCheckerTest {
                 }
             val client = HttpClient(mockEngine)
             val checker = GravatarChecker(client)
-
             assertFailsWith<VerificationError> {
-                checker.hasGravatar("test@example.com")
+                checker.getGravatarUrl("test@example.com")
             }
         }
 }
