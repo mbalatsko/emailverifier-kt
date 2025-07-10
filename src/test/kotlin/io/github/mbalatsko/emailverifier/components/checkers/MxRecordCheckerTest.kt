@@ -44,8 +44,8 @@ class GoogleDoHLookupBackendTest {
             val records = backend.getMxRecords("example.com")
             assertEquals(
                 listOf(
-                    MxRecord("mx1.example.com", 10),
                     MxRecord("mx2.example.com", 20),
+                    MxRecord("mx1.example.com", 10),
                 ),
                 records,
             )

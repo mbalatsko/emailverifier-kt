@@ -10,6 +10,9 @@ import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
 abstract class BaseChecker(
     private val domainsProvider: DomainsProvider,
 ) {
+    /**
+     * The set of data loaded from the [domainsProvider].
+     */
     protected var dataSet: Set<String> = emptySet()
 
     /**

@@ -94,7 +94,8 @@ data class EmailValidationResult(
 ) {
     /**
      * Returns true if all strong indicator checks passed.
-     * Strong indicator checks: syntax, registrability, mx record presence, disposability.
+     * Strong indicator checks are: syntax, registrability, mx record presence, and disposability.
+     * These checks are the most likely to indicate that an email address is not valid.
      */
     fun isLikelyDeliverable(): Boolean =
         syntax !is CheckResult.Failed &&

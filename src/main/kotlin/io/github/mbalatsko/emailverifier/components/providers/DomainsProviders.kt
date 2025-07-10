@@ -66,6 +66,11 @@ class OnlineLFDomainsProvider(
         }
 }
 
+/**
+ * [LFDomainsProvider] implementation that retrieves domain data from a local resource file.
+ *
+ * @property resourcesFilePath the path to the linefeed-separated domain list within the resources.
+ */
 class OfflineLFDomainsProvider(
     private val resourcesFilePath: String,
 ) : LFDomainsProvider() {
@@ -75,5 +80,10 @@ class OfflineLFDomainsProvider(
         require(resourceUrl != null) { "$resourcesFilePath resource does not exist" }
     }
 
+    /**
+     * Reads the content of the local resource file.
+     *
+     * @return the content of the resource file as raw text.
+     */
     override suspend fun obtainData(): String = resourceUrl!!.readText()
 }

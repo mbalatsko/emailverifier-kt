@@ -12,7 +12,6 @@ import io.github.mbalatsko.emailverifier.components.providers.OfflineLFDomainsPr
 import io.github.mbalatsko.emailverifier.components.providers.OnlineLFDomainsProvider
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
@@ -229,92 +228,119 @@ class EmailVerifierDslBuilder {
             val freeConfig = free.build(allOffline)
             val roleBasedUsernameConfig = roleBasedUsername.build(allOffline)
 
-            val pslIndex = createPslIndex(registrabilityConfig, currentHttpClient)
-            val disposableEmailChecker = createDisposableEmailChecker(disposabilityConfig, currentHttpClient)
-            val freeChecker = createFreeChecker(freeConfig, currentHttpClient)
-            val roleBasedUsernameChecker = createRoleBasedUsernameChecker(roleBasedUsernameConfig, currentHttpClient)
+            val pslIndex = async { createPslIndex(registrabilityConfig, currentHttpClient) }
+            val disposableEmailChecker = async { createDisposableEmailChecker(disposabilityConfig, currentHttpClient) }
+            val freeChecker = async { createFreeChecker(freeConfig, currentHttpClient) }
+            val roleBasedUsernameChecker = async { createRoleBasedUsernameChecker(roleBasedUsernameConfig, currentHttpClient) }
             val mxRecordChecker = createMxRecordChecker(mxRecordConfig, currentHttpClient)
             val gravatarChecker = createGravatarChecker(gravatarConfig, currentHttpClient)
 
             EmailVerifier(
                 emailSyntaxChecker,
-                pslIndex?.await(),
+                pslIndex.await(),
                 mxRecordChecker,
-                disposableEmailChecker?.await(),
+                disposableEmailChecker.await(),
                 gravatarChecker,
-                freeChecker?.await(),
-                roleBasedUsernameChecker?.await(),
+                freeChecker.await(),
+                roleBasedUsernameChecker.await(),
             )
         }
 
-    private fun CoroutineScope.createPslIndex(
+    /**
+     * Creates a [PslIndex] instance based on the provided configuration.
+     *
+     * @param config The registrability configuration.
+     * @param httpClient The HTTP client for online data fetching.
+     * @return [PslIndex] or null if the check is disabled.
+     */
+    private suspend fun createPslIndex(
         config: RegistrabilityConfig,
         httpClient: HttpClient,
     ) = if (config.enabled) {
-        async {
-            val provider =
-                if (config.offline) {
-                    OfflineLFDomainsProvider(PslIndex.MOZILLA_PSL_RESOURCE_FILE)
-                } else {
-                    OnlineLFDomainsProvider(config.pslUrl, httpClient)
-                }
-            PslIndex.init(provider)
-        }
+        val provider =
+            if (config.offline) {
+                OfflineLFDomainsProvider(PslIndex.MOZILLA_PSL_RESOURCE_FILE)
+            } else {
+                OnlineLFDomainsProvider(config.pslUrl, httpClient)
+            }
+        PslIndex.init(provider)
     } else {
         null
     }
 
-    private fun CoroutineScope.createDisposableEmailChecker(
+    /**
+     * Creates a [DisposableEmailChecker] instance based on the provided configuration.
+     *
+     * @param config The disposability configuration.
+     * @param httpClient The HTTP client for online data fetching.
+     * @return Ac[DisposableEmailChecker] or null if the check is disabled.
+     */
+    private suspend fun createDisposableEmailChecker(
         config: DisposabilityConfig,
         httpClient: HttpClient,
     ) = if (config.enabled) {
-        async {
-            val provider =
-                if (config.offline) {
-                    OfflineLFDomainsProvider(DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE)
-                } else {
-                    OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
-                }
-            DisposableEmailChecker.init(provider)
-        }
+        val provider =
+            if (config.offline) {
+                OfflineLFDomainsProvider(DisposableEmailChecker.DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE)
+            } else {
+                OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
+            }
+        DisposableEmailChecker.init(provider)
     } else {
         null
     }
 
-    private fun CoroutineScope.createFreeChecker(
+    /**
+     * Creates a [FreeChecker] instance based on the provided configuration.
+     *
+     * @param config The free email check configuration.
+     * @param httpClient The HTTP client for online data fetching.
+     * @return [FreeChecker] or null if the check is disabled.
+     */
+    private suspend fun createFreeChecker(
         config: FreeConfig,
         httpClient: HttpClient,
     ) = if (config.enabled) {
-        async {
-            val provider =
-                if (config.offline) {
-                    OfflineLFDomainsProvider(FreeChecker.FREE_EMAILS_LIST_RESOURCE_FILE)
-                } else {
-                    OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
-                }
-            FreeChecker.init(provider)
-        }
+        val provider =
+            if (config.offline) {
+                OfflineLFDomainsProvider(FreeChecker.FREE_EMAILS_LIST_RESOURCE_FILE)
+            } else {
+                OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
+            }
+        FreeChecker.init(provider)
     } else {
         null
     }
 
-    private fun CoroutineScope.createRoleBasedUsernameChecker(
+    /**
+     * Creates a [RoleBasedUsernameChecker] instance based on the provided configuration.
+     *
+     * @param config The role-based username configuration.
+     * @param httpClient The HTTP client for online data fetching.
+     * @return [RoleBasedUsernameChecker] or null if the check is disabled.
+     */
+    private suspend fun createRoleBasedUsernameChecker(
         config: RoleBasedUsernameConfig,
         httpClient: HttpClient,
     ) = if (config.enabled) {
-        async {
-            val provider =
-                if (config.offline) {
-                    OfflineLFDomainsProvider(RoleBasedUsernameChecker.ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE)
-                } else {
-                    OnlineLFDomainsProvider(config.usernamesListUrl, httpClient)
-                }
-            RoleBasedUsernameChecker.init(provider)
-        }
+        val provider =
+            if (config.offline) {
+                OfflineLFDomainsProvider(RoleBasedUsernameChecker.ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE)
+            } else {
+                OnlineLFDomainsProvider(config.usernamesListUrl, httpClient)
+            }
+        RoleBasedUsernameChecker.init(provider)
     } else {
         null
     }
 
+    /**
+     * Creates an [MxRecordChecker] instance based on the provided configuration.
+     *
+     * @param config The MX record configuration.
+     * @param httpClient The HTTP client for DNS-over-HTTPS queries.
+     * @return An [MxRecordChecker] or null if the check is disabled.
+     */
     private fun createMxRecordChecker(
         config: MxRecordConfig,
         httpClient: HttpClient,
@@ -324,6 +350,13 @@ class EmailVerifierDslBuilder {
         null
     }
 
+    /**
+     * Creates a [GravatarChecker] instance based on the provided configuration.
+     *
+     * @param config The Gravatar configuration.
+     * @param httpClient The HTTP client for Gravatar requests.
+     * @return A [GravatarChecker] or null if the check is disabled.
+     */
     private fun createGravatarChecker(
         config: GravatarConfig,
         httpClient: HttpClient,

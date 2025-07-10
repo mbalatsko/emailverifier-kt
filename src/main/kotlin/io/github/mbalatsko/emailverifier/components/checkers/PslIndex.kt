@@ -73,6 +73,16 @@ class PslIndex(
         }
     }
 
+    /**
+     * Finds the registrable domain for a given hostname based on PSL rules.
+     *
+     * A registrable domain is the portion of a domain name that is not part of a public suffix.
+     * For example, for "www.example.co.uk", "example.co.uk" is the registrable domain.
+     *
+     * @param hostname the full hostname to check (e.g., "www.example.co.uk").
+     * @return the registrable domain as a string, or null if the hostname itself is a public suffix
+     *   or cannot be determined (e.g., a TLD).
+     */
     fun findRegistrableDomain(hostname: String): String? {
         val labels =
             hostname

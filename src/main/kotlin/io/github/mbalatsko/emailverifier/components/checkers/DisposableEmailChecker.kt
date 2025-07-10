@@ -52,6 +52,13 @@ class DisposableEmailChecker(
         const val DISPOSABLE_EMAILS_LIST_NORMAL_URL =
             "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.txt"
 
+        /**
+         * Convenience initializer that creates a [DisposableEmailChecker] and immediately
+         * loads its domain data.
+         *
+         * @param domainsProvider the provider for disposable email domains.
+         * @return an initialized [DisposableEmailChecker].
+         */
         suspend fun init(domainsProvider: DomainsProvider): DisposableEmailChecker {
             val disposableEmailChecker = DisposableEmailChecker(domainsProvider)
             disposableEmailChecker.loadData()
