@@ -29,12 +29,12 @@ Checks the structure of the email:
 ### 2. **Registrability Check**
 Verifies whether the email domain is **registrable**:
 - Uses the [Public Suffix List](https://publicsuffix.org/)
-- Rejects emails like `user@something.invalid`, allows `user@example.co.uk`
+- Returns the registrable domain (e.g., `example.co.uk` for `user@example.co.uk`) or `Failed` if not registrable (e.g., `user@something.invalid`).
 
 ### 3. **MX Record Lookup**
 Ensures the domain is actually configured to receive emails:
 - Queries DNS-over-HTTPS (DoH) via Google
-- Fails gracefully if no MX records found
+- Returns a list of MX records or `Failed` if no MX records are found.
 
 ### 4. **Disposable Email Detection**
 Filters out **temporary/disposable** email domains:
@@ -45,17 +45,18 @@ Filters out **temporary/disposable** email domains:
 
 Detects whether an email has an associated **Gravatar**:
 - Computes MD5 hash of the email
-- Returns `PASSED` result if a custom avatar exists
+- Returns the Gravatar URL or `Failed` if no custom avatar is found.
 
 ### 6. **Free Email Provider Detection**
 Checks whether the email domain belongs to a known free‐email provider (e.g. `gmail.com`, `yahoo.com`) 
 using a curated list of popular services.
-- Returns `PASSED` result if email hostname is not a known free‐email provider
+- Returns `Passed` result if email hostname is not a known free‐email provider
 
 List used: [Github gist](https://gist.github.com/okutbay/5b4974b70673dfdcc21c517632c1f984) by @okutbay 
 
 ### 7. **Role-Based Username Detection**
 Detects generic or departmental username (e.g. `info@`, `admin@`, `support@`) by checking against a curated list of common role-based usernames.
+- Returns `Passed` result if email username is not a known role-based username
 
 List used: https://github.com/mbalatsko/role-based-email-addresses-list (original repo: https://github.com/mixmaxhq/role-based-email-addresses)
 
@@ -75,28 +76,104 @@ You get a detailed result for each check:
 ```kotlin
 data class EmailValidationResult(
     val email: String,
-    val syntaxCheck: CheckResult,
-    val registrabilityCheck: CheckResult,
-    val mxRecordCheck: CheckResult,
-    val disposabilityCheck: CheckResult,
-    val gravatarCheck: CheckResult,
-    val freeCheck: CheckResult,
-    val roleBasedUsernameCheck: CheckResult
+    val emailParts: EmailParts,
+    val syntax: CheckResult<SyntaxValidationData>,
+    val registrability: CheckResult<RegistrabilityData>,
+    val mx: CheckResult<MxRecordData>,
+    val disposable: CheckResult<Unit>,
+    val gravatar: CheckResult<GravatarData>,
+    val free: CheckResult<Unit>,
+    val roleBasedUsername: CheckResult<Unit>,
 ) {
-  /**
-   * Returns true if all strong indicator checks either passed or were skipped.
-   * Strong indicator checks: syntax, registrability, mx record presence, disposability
-   * Note: mx record presence might return ERRORED, which is not validated
-   */
-    fun ok(): Boolean
+    /**
+     * Returns true if all strong indicator checks passed.
+     * Strong indicator checks are: syntax, registrability, mx record presence, and disposability.
+     * These checks are the most likely to indicate that an email address is not valid.
+     */
+    fun isLikelyDeliverable(): Boolean
 }
+
+/**
+ * A sealed class representing the result of a single validation check.
+ * It can be in one of four states: Passed, Failed, Skipped, or Errored.
+ *
+ * @param T the type of data carried by the result.
+ */
+sealed class CheckResult<out T> {
+    /**
+     * Indicates that the check was successful.
+     * @property data optional data associated with the passed check.
+     */
+    data class Passed<T>(
+        val data: T? = null,
+    ) : CheckResult<T>()
+
+    /**
+     * Indicates that the check failed.
+     * @property data optional data associated with the failed check.
+     */
+    data class Failed<T>(
+        val data: T? = null,
+    ) : CheckResult<T>()
+
+    /**
+     * Indicates that the check was skipped.
+     */
+    data object Skipped : CheckResult<Nothing>()
+
+    /**
+     * Indicates that the check produced an error.
+     * @property error the throwable that was caught during the check.
+     */
+    data class Errored(
+        val error: Throwable,
+    ) : CheckResult<Nothing>()
+}
+
+/**
+ * Data class holding the validity of each part of the email syntax.
+ * @property username true if the username part is valid.
+ * @property plusTag true if the plus-tag part is valid.
+ * @property hostname true if the hostname part is valid.
+ */
+data class SyntaxValidationData(
+    val username: Boolean,
+    val plusTag: Boolean,
+    val hostname: Boolean,
+)
+
+/**
+ * Data class holding the registrable domain found during the registrability check.
+ * @property registrableDomain The registrable domain string, or null if not found.
+ */
+data class RegistrabilityData(
+    val registrableDomain: String?,
+)
+
+/**
+ * Data class holding the MX records found during the MX record check.
+ * @property records A list of [MxRecord]s, or an empty list if none were found.
+ */
+data class MxRecordData(
+    val records: List<MxRecord>,
+)
+
+/**
+ * Data class holding the Gravatar URL found during the Gravatar check.
+ * @property gravatarUrl The Gravatar URL string, or null if no custom avatar was found.
+ */
+data class GravatarData(
+    val gravatarUrl: String?,
+)
 ```
 
 Each check can return:
-- `PASSED` ✅
-- `FAILED` ❌
-- `ERRORED` ⚠️ (if an unexpected error occurred during the check)
-- `SKIPPED` ⏭️ (if not enabled or not applicable)
+- `Passed` ✅ (with optional data, see data classes above for details)
+- `Failed` ❌ (with optional data, see data classes above for details)
+- `Errored` ⚠️ (if an unexpected error occurred during the check)
+- `Skipped` ⏭️ (if not enabled or not applicable)
+
+For `Disposable Email Detection`, `Free Email Provider Detection`, and `Role-Based Username Detection`, the `data` field in `Passed` or `Failed` is `Unit` and carries no specific information beyond the success/failure status. The `Passed` state indicates the email is *not* disposable/free/role-based, while `Failed` indicates it *is*.
 
 ## 🚀 Getting Started
 
@@ -127,7 +204,7 @@ val verifier =  emailVerifier { }
 
 val result = verifier.verify("john.doe@example.com")
 
-if (result.ok()) {
+if (result.isLikelyDeliverable()) {
     println("Valid email!")
 } else {
     println("Email validation failed: $result")
@@ -180,8 +257,8 @@ val verifier = emailVerifier {
 }
 
 val result = verifier.verify("mbalatsko@gmail.com")
-// result.mxRecordCheck will be SKIPPED
-// result.gravatarCheck will be SKIPPED
+// result.mx will be SKIPPED
+// result.gravatar will be SKIPPED
 ```
 
 You can also configure offline mode for each check individually.

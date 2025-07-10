@@ -62,6 +62,30 @@ data class SyntaxValidationData(
 )
 
 /**
+ * Data class holding the registrable domain found during the registrability check.
+ * @property registrableDomain The registrable domain string, or null if not found.
+ */
+data class RegistrabilityData(
+    val registrableDomain: String?,
+)
+
+/**
+ * Data class holding the MX records found during the MX record check.
+ * @property records A list of [MxRecord]s, or an empty list if none were found.
+ */
+data class MxRecordData(
+    val records: List<MxRecord>,
+)
+
+/**
+ * Data class holding the Gravatar URL found during the Gravatar check.
+ * @property gravatarUrl The Gravatar URL string, or null if no custom avatar was found.
+ */
+data class GravatarData(
+    val gravatarUrl: String?,
+)
+
+/**
  * Custom exception to signal that a verification check failed due to an external error.
  */
 class VerificationError(
@@ -85,10 +109,10 @@ data class EmailValidationResult(
     val email: String,
     val emailParts: EmailParts,
     val syntax: CheckResult<SyntaxValidationData>,
-    val registrability: CheckResult<String?> = CheckResult.Skipped,
-    val mx: CheckResult<List<MxRecord>> = CheckResult.Skipped,
+    val registrability: CheckResult<RegistrabilityData> = CheckResult.Skipped,
+    val mx: CheckResult<MxRecordData> = CheckResult.Skipped,
     val disposable: CheckResult<Unit> = CheckResult.Skipped,
-    val gravatar: CheckResult<String?> = CheckResult.Skipped,
+    val gravatar: CheckResult<GravatarData> = CheckResult.Skipped,
     val free: CheckResult<Unit> = CheckResult.Skipped,
     val roleBasedUsername: CheckResult<Unit> = CheckResult.Skipped,
 ) {
@@ -159,7 +183,13 @@ class EmailVerifier(
                             CheckResult.Skipped
                         } else {
                             val result = pslIndex.findRegistrableDomain(emailParts.hostname)
-                            if (result != null) CheckResult.Passed(result) else CheckResult.Failed(result)
+                            if (result !=
+                                null
+                            ) {
+                                CheckResult.Passed(RegistrabilityData(result))
+                            } else {
+                                CheckResult.Failed(RegistrabilityData(result))
+                            }
                         }
                     } catch (e: Exception) {
                         CheckResult.Errored(e)
@@ -211,7 +241,7 @@ class EmailVerifier(
                             CheckResult.Skipped
                         } else {
                             val result = mxRecordChecker.getRecords(emailParts.hostname)
-                            if (result.isNotEmpty()) CheckResult.Passed(result) else CheckResult.Failed(result)
+                            if (result.isNotEmpty()) CheckResult.Passed(MxRecordData(result)) else CheckResult.Failed(MxRecordData(result))
                         }
                     } catch (e: Exception) {
                         CheckResult.Errored(e)
@@ -224,7 +254,7 @@ class EmailVerifier(
                             CheckResult.Skipped
                         } else {
                             val result = gravatarChecker.getGravatarUrl("${emailParts.username}@${emailParts.hostname}")
-                            if (result != null) CheckResult.Passed(result) else CheckResult.Failed(result)
+                            if (result != null) CheckResult.Passed(GravatarData(result)) else CheckResult.Failed(GravatarData(result))
                         }
                     } catch (e: Exception) {
                         CheckResult.Errored(e)
