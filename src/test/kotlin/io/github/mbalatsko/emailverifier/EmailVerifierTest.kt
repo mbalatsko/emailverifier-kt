@@ -37,6 +37,7 @@ class EmailVerifierLocalTest {
             gravatarChecker = null,
             freeChecker = FreeChecker.init(FixedListProvider(setOf("free.com"))),
             roleBasedUsernameChecker = RoleBasedUsernameChecker.init(FixedListProvider(setOf("role"))),
+            smtpChecker = null,
         )
 
     @Test
@@ -125,6 +126,7 @@ class EmailVerifierLocalTest {
                     gravatarChecker = null,
                     freeChecker = null,
                     roleBasedUsernameChecker = null,
+                    smtpChecker = null,
                 )
             val result = verifier.verify("user@example.com")
             assertTrue(result.mx is CheckResult.Errored)
@@ -153,7 +155,15 @@ class EmailVerifierLocalTest {
 }
 
 class EmailVerifierOnlineTest {
-    private val onlineEmailVerifier = runBlocking { emailVerifier {} }
+    private val onlineEmailVerifier =
+        runBlocking {
+            emailVerifier {
+                smtp {
+                    enabled = true
+                    maxRetries = 1
+                }
+            }
+        }
 
     @Test
     fun `gmail passes main checks but fails free and gravatar`() =
@@ -163,6 +173,7 @@ class EmailVerifierOnlineTest {
             assertTrue(result.gravatar is CheckResult.Failed<*>)
             assertTrue(result.free is CheckResult.Failed<*>)
             assertTrue(result.roleBasedUsername is CheckResult.Passed<*>)
+            assertTrue(result.smtp is CheckResult.Passed)
         }
 
     @Test
@@ -224,6 +235,7 @@ class EmailVerifierOfflineTest {
 
             assertTrue(result.gravatar is CheckResult.Skipped)
             assertTrue(result.mx is CheckResult.Skipped)
+            assertTrue(result.smtp is CheckResult.Skipped)
         }
 
     @Test
