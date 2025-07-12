@@ -74,7 +74,7 @@ disables checks that require network access (MX Record, Gravatar, SMTP).
 
 You can also configure **offline mode** for each check **individually**.
 
-The bundled data is automatically updated **daily** via a GitHub Actions workflow.
+The bundled data is manually updated **before release** via a GitHub Actions workflow.
 
 ## 🧪 Output: Validation Results
 
