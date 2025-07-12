@@ -9,6 +9,8 @@ import io.github.mbalatsko.emailverifier.components.checkers.MxRecord
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.checkers.RoleBasedUsernameChecker
+import io.github.mbalatsko.emailverifier.components.checkers.SmtpChecker
+import io.github.mbalatsko.emailverifier.components.checkers.SmtpData
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
@@ -21,10 +23,10 @@ import kotlinx.coroutines.coroutineScope
 sealed class CheckResult<out T> {
     /**
      * Indicates that the check was successful.
-     * @property data optional data associated with the passed check.
+     * @property data data associated with the passed check.
      */
     data class Passed<T>(
-        val data: T? = null,
+        val data: T,
     ) : CheckResult<T>()
 
     /**
@@ -104,6 +106,7 @@ class VerificationError(
  * @property gravatar result of gravatar presence check.
  * @property free result of check against list of known free‐email providers.
  * @property roleBasedUsername result of check against list of role-based usernames.
+ * @property smtp result of SMTP check.
  */
 data class EmailValidationResult(
     val email: String,
@@ -115,6 +118,7 @@ data class EmailValidationResult(
     val gravatar: CheckResult<GravatarData> = CheckResult.Skipped,
     val free: CheckResult<Unit> = CheckResult.Skipped,
     val roleBasedUsername: CheckResult<Unit> = CheckResult.Skipped,
+    val smtp: CheckResult<SmtpData> = CheckResult.Skipped,
 ) {
     /**
      * Returns true if all strong indicator checks passed.
@@ -144,6 +148,7 @@ class EmailVerifier(
     private val gravatarChecker: GravatarChecker?,
     private val freeChecker: FreeChecker?,
     private val roleBasedUsernameChecker: RoleBasedUsernameChecker?,
+    private val smtpChecker: SmtpChecker?,
 ) {
     /**
      * Validates the given email address using configured checks.
@@ -151,31 +156,31 @@ class EmailVerifier(
      * @param email the input email address to validate.
      * @return a structured [EmailValidationResult] with results for each check.
      */
-    suspend fun verify(email: String): EmailValidationResult {
-        val emailParts =
-            try {
-                emailSyntaxChecker.parseEmailParts(email)
-            } catch (_: IllegalArgumentException) {
-                val syntaxData = SyntaxValidationData(username = false, plusTag = false, hostname = false)
-                return EmailValidationResult(
-                    email = email,
-                    emailParts = EmailParts("", "", ""),
-                    syntax = CheckResult.Failed(syntaxData),
-                )
-            }
+    suspend fun verify(email: String): EmailValidationResult =
+        coroutineScope {
+            val emailParts =
+                try {
+                    emailSyntaxChecker.parseEmailParts(email)
+                } catch (_: IllegalArgumentException) {
+                    val syntaxData = SyntaxValidationData(username = false, plusTag = false, hostname = false)
+                    return@coroutineScope EmailValidationResult(
+                        email = email,
+                        emailParts = EmailParts("", "", ""),
+                        syntax = CheckResult.Failed(syntaxData),
+                    )
+                }
 
-        val isUsernameValid = emailSyntaxChecker.isUsernameValid(emailParts.username)
-        val isPlusTagValid = emailSyntaxChecker.isPlusTagValid(emailParts.plusTag)
-        val isHostnameValid = emailSyntaxChecker.isHostnameValid(emailParts.hostname)
-        val syntaxData = SyntaxValidationData(isUsernameValid, isPlusTagValid, isHostnameValid)
-        val syntaxCheck =
-            if (syntaxData.run { username && plusTag && hostname }) {
-                CheckResult.Passed(syntaxData)
-            } else {
-                CheckResult.Failed(syntaxData)
-            }
+            val isUsernameValid = emailSyntaxChecker.isUsernameValid(emailParts.username)
+            val isPlusTagValid = emailSyntaxChecker.isPlusTagValid(emailParts.plusTag)
+            val isHostnameValid = emailSyntaxChecker.isHostnameValid(emailParts.hostname)
+            val syntaxData = SyntaxValidationData(isUsernameValid, isPlusTagValid, isHostnameValid)
+            val syntaxCheck =
+                if (syntaxData.run { username && plusTag && hostname }) {
+                    CheckResult.Passed(syntaxData)
+                } else {
+                    CheckResult.Failed(syntaxData)
+                }
 
-        return coroutineScope {
             val registrabilityCheck =
                 async {
                     try {
@@ -261,6 +266,25 @@ class EmailVerifier(
                     }
                 }
 
+            val mxResult = mxRecordCheck.await()
+            val smtpCheck =
+                async {
+                    try {
+                        if (smtpChecker == null || !isUsernameValid || !isHostnameValid || mxResult !is CheckResult.Passed) {
+                            CheckResult.Skipped
+                        } else {
+                            val result =
+                                smtpChecker.verifyEmail(
+                                    emailParts,
+                                    mxResult.data.records,
+                                )
+                            if (result.isDeliverable) CheckResult.Passed(result) else CheckResult.Failed(result)
+                        }
+                    } catch (e: Exception) {
+                        CheckResult.Errored(e)
+                    }
+                }
+
             EmailValidationResult(
                 email = email,
                 emailParts = emailParts,
@@ -271,7 +295,7 @@ class EmailVerifier(
                 gravatar = gravatarCheck.await(),
                 free = freeCheck.await(),
                 roleBasedUsername = roleBasedUsernameCheck.await(),
+                smtp = smtpCheck.await(),
             )
         }
-    }
 }

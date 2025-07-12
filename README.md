@@ -60,10 +60,17 @@ Detects generic or departmental username (e.g. `info@`, `admin@`, `support@`) by
 
 List used: https://github.com/mbalatsko/role-based-email-addresses-list (original repo: https://github.com/mixmaxhq/role-based-email-addresses)
 
-### 8. **Offline Mode**
+### 8. **SMTP Deliverability Check**
+Performs a live check with the mail server to verify if the mailbox actually exists.
+- Connects to the mail server and uses the `RCPT TO` command to check for deliverability without sending an email.
+- Can detect "catch-all" server configurations where all emails to a domain are accepted.
+- **Disabled by default**, as most cloud providers and ISPs block outbound traffic on port 25 to prevent spam. 
+Can be enabled and configured to work through a SOCKS proxy.
+
+### 9. **Offline Mode**
 For environments without internet access, `EmailVerifier` can run in a fully **offline** mode. When enabled, it uses bundled 
 data for checks that support it (Syntax, Registrability, Disposability, Free Email, and Role-Based Username) and automatically 
-disables checks that require network access (MX Record, Gravatar). 
+disables checks that require network access (MX Record, Gravatar, SMTP). 
 
 You can also configure **offline mode** for each check **individually**.
 
@@ -84,6 +91,7 @@ data class EmailValidationResult(
     val gravatar: CheckResult<GravatarData>,
     val free: CheckResult<Unit>,
     val roleBasedUsername: CheckResult<Unit>,
+    val smtp: CheckResult<SmtpData>,
 ) {
     /**
      * Returns true if all strong indicator checks passed.
@@ -102,10 +110,10 @@ data class EmailValidationResult(
 sealed class CheckResult<out T> {
     /**
      * Indicates that the check was successful.
-     * @property data optional data associated with the passed check.
+     * @property data data associated with the passed check.
      */
     data class Passed<T>(
-        val data: T? = null,
+        val data: T,
     ) : CheckResult<T>()
 
     /**
@@ -164,6 +172,21 @@ data class MxRecordData(
  */
 data class GravatarData(
     val gravatarUrl: String?,
+)
+
+/**
+ * Data class holding the results of an SMTP check.
+ *
+ * @property isDeliverable true if the email address is deliverable.
+ * @property isCatchAll true if the server has a catch-all policy, false if not, null if inconclusive.
+ * @property smtpCode the last SMTP response code.
+ * @property smtpMessage the last SMTP response message.
+ */
+data class SmtpData(
+    val isDeliverable: Boolean,
+    val isCatchAll: Boolean?,
+    val smtpCode: Int,
+    val smtpMessage: String,
 )
 ```
 
@@ -241,10 +264,35 @@ val verifier = emailVerifier {
         enabled = true // Explicitly enable (default is true)
         usernamesListUrl = "https://my.custom.domain/role_based_usernames.txt" // Custom role-based usernames list
     }
+    smtp {
+        enabled = true // IMPORTANT: Disabled by default. See notes below.
+        enableAllCatchCheck = true // Check if the server has a catch-all policy.
+        timeoutMillis = 500 // Connection timeout.
+        maxRetries = 2 // Retries for SMTP commands.
+    }
     // You can also provide a custom HttpClient for all network operations:
     // httpClient = customHttpClient
 }
 ```
+
+> **⚠️ Important Note on SMTP Checks**
+> The SMTP check is **disabled by default** because most Internet Service Providers (ISPs) and cloud hosting providers (like AWS, GCP, Azure) block outgoing requests on port 25 to prevent email spamming.
+>
+> To perform this check reliably, you will likely need to route the connection through a **SOCKS proxy** that has unrestricted access to port 25.
+>
+> Here is how you can configure it:
+> ```kotlin
+> import java.net.InetSocketAddress
+> import java.net.Proxy
+>
+> val verifier = emailVerifier {
+>     smtp {
+>         enabled = true
+>         // Configure a SOCKS proxy
+>         proxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress("your-proxy-host.com", 1080))
+>     }
+> }
+> ```
 
 ### 4. Offline Mode
 
@@ -316,8 +364,6 @@ instance of the `EmailVerifier` and reuse it throughout the lifecycle of your ap
 Planned features:
 
 * **Typo check** suggestions
-* **SMTP Probing**
-  * Connect to the target mail server and verify deliverability via the `RCPT TO` SMTP command (without sending email)
 * **Multiplatform Support**
   * Support Kotlin/Native by replacing or abstracting away java.net.IDN
 

@@ -8,12 +8,15 @@ import io.github.mbalatsko.emailverifier.components.checkers.GravatarChecker
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
 import io.github.mbalatsko.emailverifier.components.checkers.RoleBasedUsernameChecker
+import io.github.mbalatsko.emailverifier.components.checkers.SmtpChecker
+import io.github.mbalatsko.emailverifier.components.checkers.SocketSmtpConnection
 import io.github.mbalatsko.emailverifier.components.providers.OfflineLFDomainsProvider
 import io.github.mbalatsko.emailverifier.components.providers.OnlineLFDomainsProvider
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import java.net.Proxy
 
 /**
  * Configuration for the Public Suffix List (PSL) check.
@@ -175,6 +178,52 @@ class RoleBasedUsernameConfigBuilder {
 }
 
 /**
+ * Configuration for SMTP check.
+ *
+ * @property enabled whether this check should be performed.
+ * @property enableAllCatchCheck whether to check if the server has a catch-all policy.
+ * @property timeoutMillis connection timeout in milliseconds.
+ * @property maxRetries maximum number of retries for SMTP commands.
+ * @property proxy The proxy to use for the connection, or null for a direct connection.
+ */
+data class SmtpConfig(
+    val enabled: Boolean,
+    val enableAllCatchCheck: Boolean,
+    val timeoutMillis: Int,
+    val maxRetries: Int,
+    val proxy: Proxy?,
+)
+
+/**
+ * Builder for [SmtpConfig].
+ */
+class SmtpConfigBuilder {
+    /** Whether this check should be performed. */
+    var enabled: Boolean = false
+
+    /** Whether to check if the server has a catch-all policy. */
+    var enableAllCatchCheck: Boolean = true
+
+    /** Connection timeout in milliseconds. */
+    var timeoutMillis: Int = 5000
+
+    /** Maximum number of retries for SMTP commands. */
+    var maxRetries: Int = 2
+
+    /** The proxy to use for the connection, or null for a direct connection. */
+    var proxy: Proxy? = null
+
+    internal fun build(allOffline: Boolean) =
+        SmtpConfig(
+            enabled && !allOffline,
+            enableAllCatchCheck,
+            timeoutMillis,
+            maxRetries,
+            proxy,
+        )
+}
+
+/**
  * DSL builder for configuring and initializing [EmailVerifier].
  */
 class EmailVerifierDslBuilder {
@@ -189,6 +238,7 @@ class EmailVerifierDslBuilder {
     val gravatar = GravatarConfigBuilder()
     val free = FreeConfigBuilder()
     val roleBasedUsername = RoleBasedUsernameConfigBuilder()
+    val smpt = SmtpConfigBuilder()
 
     var httpClient: HttpClient? = null
 
@@ -216,6 +266,15 @@ class EmailVerifierDslBuilder {
         roleBasedUsername.apply(block)
     }
 
+    /**
+     * Configures SMTP check.
+     *
+     * @param block a lambda with [SmtpConfigBuilder] as its receiver.
+     */
+    fun smtp(block: SmtpConfigBuilder.() -> Unit) {
+        smpt.apply(block)
+    }
+
     internal suspend fun build(): EmailVerifier =
         coroutineScope {
             val currentHttpClient = httpClient ?: HttpClient(CIO)
@@ -227,6 +286,7 @@ class EmailVerifierDslBuilder {
             val gravatarConfig = gravatar.build(allOffline)
             val freeConfig = free.build(allOffline)
             val roleBasedUsernameConfig = roleBasedUsername.build(allOffline)
+            val smtpConfig = smpt.build(allOffline)
 
             val pslIndex = async { createPslIndex(registrabilityConfig, currentHttpClient) }
             val disposableEmailChecker = async { createDisposableEmailChecker(disposabilityConfig, currentHttpClient) }
@@ -234,6 +294,7 @@ class EmailVerifierDslBuilder {
             val roleBasedUsernameChecker = async { createRoleBasedUsernameChecker(roleBasedUsernameConfig, currentHttpClient) }
             val mxRecordChecker = createMxRecordChecker(mxRecordConfig, currentHttpClient)
             val gravatarChecker = createGravatarChecker(gravatarConfig, currentHttpClient)
+            val smtpChecker = createSmtpChecker(smtpConfig)
 
             EmailVerifier(
                 emailSyntaxChecker,
@@ -243,6 +304,7 @@ class EmailVerifierDslBuilder {
                 gravatarChecker,
                 freeChecker.await(),
                 roleBasedUsernameChecker.await(),
+                smtpChecker,
             )
         }
 
@@ -365,6 +427,25 @@ class EmailVerifierDslBuilder {
     } else {
         null
     }
+
+    /**
+     * Creates a [SmtpChecker] instance based on the provided configuration.
+     *
+     * @param config The SMTP check configuration.
+     * @return A [SmtpChecker] or null if the check is disabled.
+     */
+    private fun createSmtpChecker(config: SmtpConfig) =
+        if (config.enabled) {
+            SmtpChecker(
+                config.enableAllCatchCheck,
+                config.maxRetries,
+                { address: String, port: Int ->
+                    SocketSmtpConnection(address, port, config.timeoutMillis, config.proxy)
+                },
+            )
+        } else {
+            null
+        }
 }
 
 /**
