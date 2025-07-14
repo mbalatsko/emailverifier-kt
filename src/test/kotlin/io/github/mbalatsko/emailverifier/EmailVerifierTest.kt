@@ -1,13 +1,14 @@
 package io.github.mbalatsko.emailverifier
 
-import io.github.mbalatsko.emailverifier.components.checkers.DisposableEmailChecker
-import io.github.mbalatsko.emailverifier.components.checkers.DnsLookupBackend
 import io.github.mbalatsko.emailverifier.components.checkers.EmailSyntaxChecker
-import io.github.mbalatsko.emailverifier.components.checkers.FreeChecker
+import io.github.mbalatsko.emailverifier.components.checkers.HostnameInDatasetChecker
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecord
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
-import io.github.mbalatsko.emailverifier.components.checkers.PslIndex
-import io.github.mbalatsko.emailverifier.components.checkers.RoleBasedUsernameChecker
+import io.github.mbalatsko.emailverifier.components.checkers.RegistrabilityChecker
+import io.github.mbalatsko.emailverifier.components.checkers.UsernameInDatasetChecker
+import io.github.mbalatsko.emailverifier.components.core.CheckResult
+import io.github.mbalatsko.emailverifier.components.core.ConnectionError
+import io.github.mbalatsko.emailverifier.components.core.DnsLookupBackend
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -31,12 +32,12 @@ class EmailVerifierLocalTest {
     private suspend fun buildVerifier(mxRecords: List<MxRecord>): EmailVerifier =
         EmailVerifier(
             emailSyntaxChecker = EmailSyntaxChecker(),
-            pslIndex = PslIndex.init(FixedListProvider(setOf("com", "co.uk"))),
+            registrabilityChecker = RegistrabilityChecker.create(FixedListProvider(setOf("com", "co.uk"))),
             mxRecordChecker = MxRecordChecker(FakeDnsBackend(mxRecords)),
-            disposableEmailChecker = DisposableEmailChecker.init(FixedListProvider(setOf("disposable.com"))),
+            disposableEmailChecker = HostnameInDatasetChecker.create(FixedListProvider(setOf("disposable.com"))),
             gravatarChecker = null,
-            freeChecker = FreeChecker.init(FixedListProvider(setOf("free.com"))),
-            roleBasedUsernameChecker = RoleBasedUsernameChecker.init(FixedListProvider(setOf("role"))),
+            freeChecker = HostnameInDatasetChecker.create(FixedListProvider(setOf("free.com"))),
+            roleBasedUsernameChecker = UsernameInDatasetChecker.create(FixedListProvider(setOf("role"))),
             smtpChecker = null,
         )
 
@@ -111,7 +112,7 @@ class EmailVerifierLocalTest {
         }
 
     private class ErrorDnsBackend : DnsLookupBackend {
-        override suspend fun getMxRecords(hostname: String): List<MxRecord> = throw VerificationError("test error")
+        override suspend fun getMxRecords(hostname: String): List<MxRecord> = throw ConnectionError("test error")
     }
 
     @Test
@@ -120,7 +121,7 @@ class EmailVerifierLocalTest {
             val verifier =
                 EmailVerifier(
                     emailSyntaxChecker = EmailSyntaxChecker(),
-                    pslIndex = null,
+                    registrabilityChecker = null,
                     mxRecordChecker = MxRecordChecker(ErrorDnsBackend()),
                     disposableEmailChecker = null,
                     gravatarChecker = null,

@@ -1,5 +1,9 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
+import io.github.mbalatsko.emailverifier.components.core.EmailParts
+import io.github.mbalatsko.emailverifier.components.core.ISmtpConnection
+import io.github.mbalatsko.emailverifier.components.core.SmtpConnectionFactory
+import io.github.mbalatsko.emailverifier.components.core.SmtpResponse
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,7 +12,7 @@ import kotlin.test.assertTrue
 
 class SmtpCheckerTest {
     @Test
-    fun `verifyEmail returns deliverable when RCPT TO is successful`() =
+    fun `check returns deliverable when RCPT TO is successful`() =
         runTest {
             // Arrange
             val mockConnection = MockSmtpConnection()
@@ -30,7 +34,7 @@ class SmtpCheckerTest {
             val mxRecords = listOf(MxRecord("mx.domain.com", 10))
 
             // Act
-            val result = checker.verifyEmail(emailParts, mxRecords)
+            val result = checker.check(emailParts, mxRecords)
 
             // Assert
             assertTrue(result.isDeliverable)
@@ -39,7 +43,7 @@ class SmtpCheckerTest {
         }
 
     @Test
-    fun `verifyEmail returns not deliverable when RCPT TO fails`() =
+    fun `check returns not deliverable when RCPT TO fails`() =
         runTest {
             // Arrange
             val mockConnection = MockSmtpConnection()
@@ -60,7 +64,7 @@ class SmtpCheckerTest {
             val mxRecords = listOf(MxRecord("mx.domain.com", 10))
 
             // Act
-            val result = checker.verifyEmail(emailParts, mxRecords)
+            val result = checker.check(emailParts, mxRecords)
 
             // Assert
             assertFalse(result.isDeliverable)
@@ -91,7 +95,7 @@ class SmtpCheckerTest {
             val mxRecords = listOf(MxRecord("mx.domain.com", 10))
 
             // Act
-            val result = checker.verifyEmail(emailParts, mxRecords)
+            val result = checker.check(emailParts, mxRecords)
 
             // Assert
             assertTrue(result.isDeliverable)
@@ -132,7 +136,7 @@ class SmtpCheckerTest {
                     MxRecord("mx2.domain.com", 20),
                 )
 
-            val result = checker.verifyEmail(emailParts, mxRecords)
+            val result = checker.check(emailParts, mxRecords)
 
             assertTrue(result.isDeliverable)
             assertEquals(250, result.smtpCode)

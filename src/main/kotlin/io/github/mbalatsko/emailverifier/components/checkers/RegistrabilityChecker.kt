@@ -1,17 +1,27 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
 import io.github.mbalatsko.emailverifier.components.Constants
+import io.github.mbalatsko.emailverifier.components.core.EmailParts
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
 
 /**
- * Public Suffix List (PSL) index for determining registrability of domain names.
+ * Data class holding the registrable domain found during the registrability check.
+ * @property registrableDomain The registrable domain string, or null if not found.
+ */
+data class RegistrabilityData(
+    val registrableDomain: String?,
+)
+
+/**
+ * Check registrability of email hostname
+ * Uses Public Suffix List (PSL) index for determining registrability of hostnames.
  *
  * Parses rules from a [DomainsProvider], typically using the PSL format from publicsuffix.org.
  * Supports normal, wildcard (`*.`), and exception (`!`) rules per PSL specification.
  */
-class PslIndex(
+class RegistrabilityChecker(
     val domainsProvider: DomainsProvider,
-) {
+) : IChecker<RegistrabilityData, Unit> {
     /**
      * Internal node structure for PSL trie.
      *
@@ -31,7 +41,7 @@ class PslIndex(
 
     /**
      * Rebuilds the PSL index by fetching and parsing rules from [domainsProvider].
-     * Must be called before using [isHostnameRegistrable].
+     * Must be called before using [check].
      */
     suspend fun build() {
         root = Node()
@@ -83,7 +93,7 @@ class PslIndex(
      * @return the registrable domain as a string, or null if the hostname itself is a public suffix
      *   or cannot be determined (e.g., a TLD).
      */
-    fun findRegistrableDomain(hostname: String): String? {
+    private fun findRegistrableDomain(hostname: String): String? {
         val labels =
             hostname
                 .split(".")
@@ -109,6 +119,21 @@ class PslIndex(
         return if (matchLen != null && labels.size > matchLen) eTld else null
     }
 
+    /**
+     * Checks the registrability of the email's hostname.
+     *
+     * @param email the decomposed parts of the email address to check.
+     * @param context (not used)
+     * @return a [RegistrabilityData] object containing the registrable domain if found.
+     */
+    override suspend fun check(
+        email: EmailParts,
+        context: Unit,
+    ): RegistrabilityData =
+        RegistrabilityData(
+            findRegistrableDomain(email.hostname),
+        )
+
     companion object {
         /** Default URL to Mozilla-maintained Public Suffix List. */
         const val MOZILLA_PSL_URL = "https://publicsuffix.org/list/public_suffix_list.dat"
@@ -116,13 +141,13 @@ class PslIndex(
         const val MOZILLA_PSL_RESOURCE_FILE = "${Constants.OFFLINE_DATA_PATH}/psl.txt"
 
         /**
-         * Constructs and initializes a [PslIndex] using the given provider.
+         * Creates and initializes a [RegistrabilityChecker] using the given provider.
          *
          * @param domainsProvider source of PSL rules.
-         * @return an initialized [PslIndex].
+         * @return an initialized [RegistrabilityChecker].
          */
-        suspend fun init(domainsProvider: DomainsProvider): PslIndex {
-            val index = PslIndex(domainsProvider)
+        suspend fun create(domainsProvider: DomainsProvider): RegistrabilityChecker {
+            val index = RegistrabilityChecker(domainsProvider)
             index.build()
             return index
         }

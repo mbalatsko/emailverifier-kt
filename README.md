@@ -87,10 +87,10 @@ data class EmailValidationResult(
     val syntax: CheckResult<SyntaxValidationData>,
     val registrability: CheckResult<RegistrabilityData>,
     val mx: CheckResult<MxRecordData>,
-    val disposable: CheckResult<Unit>,
+    val disposable: CheckResult<DatasetData>,
     val gravatar: CheckResult<GravatarData>,
-    val free: CheckResult<Unit>,
-    val roleBasedUsername: CheckResult<Unit>,
+    val free: CheckResult<DatasetData>,
+    val roleBasedUsername: CheckResult<DatasetData>,
     val smtp: CheckResult<SmtpData>,
 ) {
     /**
@@ -175,6 +175,17 @@ data class GravatarData(
 )
 
 /**
+ * Data class holding the result of a dataset check (disposable, free, role-based).
+ *
+ * @property match true if a match was found in the dataset.
+ * @property matchedOn the specific entry that was matched, or null if no match was found.
+ */
+data class DatasetData(
+    val match: Boolean,
+    val matchedOn: String? = null,
+)
+
+/**
  * Data class holding the results of an SMTP check.
  *
  * @property isDeliverable true if the email address is deliverable.
@@ -188,6 +199,171 @@ data class SmtpData(
     val smtpCode: Int,
     val smtpMessage: String,
 )
+```
+
+Each check can return:
+- `Passed` ✅ (with optional data, see data classes above for details)
+- `Failed` ❌ (with optional data, see data classes above for details)
+- `Errored` ⚠️ (if an unexpected error occurred during the check)
+- `Skipped` ⏭️ (if not enabled or not applicable)
+
+For `Disposable Email Detection`, `Free Email Provider Detection`, and `Role-Based Username Detection`, the result is a `CheckResult<DatasetData>`. The `Passed` state indicates the email is *not* disposable/free/role-based, while `Failed` indicates it *is*. The `DatasetData` object provides more context, including the specific rule or entry that was matched.
+
+## 🚀 Getting Started
+
+### 1. Add dependency (JVM only for now)
+
+Maven:
+
+```xml
+<dependency>
+    <groupId>io.github.mbalatsko</groupId>
+    <artifactId>emailverifier-kt</artifactId>
+    <version>LATEST_VERSION</version>
+</dependency>
+```
+
+Gradle:
+
+```groovy
+implementation("io.github.mbalatsko:emailverifier-kt:LATEST_VERSION")
+```
+
+Also available on [Github Packages](https://github.com/mbalatsko/emailverifier-kt/packages/2563296)
+
+### 2. Basic usage
+
+```kotlin
+val verifier =  emailVerifier { }
+
+val result = verifier.verify("john.doe@example.com")
+
+if (result.isLikelyDeliverable()) {
+    println("Valid email!")
+} else {
+    println("Email validation failed: $result")
+}
+```
+
+### 3. Custom configuration
+
+```kotlin
+val verifier = emailVerifier {
+    // All checks are enabled by default unless specified otherwise.
+
+    registrability {
+        enabled = true // Explicitly enable (default is true)
+        pslUrl  = "https://my.custom.domain/public_suffix_list.dat" // Custom PSL URL
+        offline = false // Use online data for this check
+    }
+    mxRecord {
+        enabled = false // Disable MX record checks
+        // dohServerEndpoint = "https://my.custom.doh/dns-query" // Custom DoH endpoint if enabled
+    }
+    disposability {
+        enabled = true // Explicitly enable (default is true)
+        domainsListUrl = "https://my.custom.domain/disposable_domains.txt" // Custom disposable domains list
+    }
+    gravatar {
+        enabled = true // Explicitly enable (default is true)
+    }
+    free {
+        enabled = false // Disable free email provider checks
+        // domainsListUrl = "https://my.custom.domain/free_emails.txt" // Custom free emails list if enabled
+    }
+    roleBasedUsername {
+        enabled = true // Explicitly enable (default is true)
+        usernamesListUrl = "https://my.custom.domain/role_based_usernames.txt" // Custom role-based usernames list
+    }
+    smtp {
+        enabled = true // IMPORTANT: Disabled by default. See notes below.
+        enableAllCatchCheck = true // Check if the server has a catch-all policy.
+        timeoutMillis = 500 // Connection timeout.
+        maxRetries = 2 // Retries for SMTP commands.
+    }
+    // You can also provide a custom HttpClient for all network operations:
+    // httpClient = customHttpClient
+}
+```
+
+> **⚠️ Important Note on SMTP Checks**
+> The SMTP check is **disabled by default** because most Internet Service Providers (ISPs) and cloud hosting providers (like AWS, GCP, Azure) block outgoing requests on port 25 to prevent email spamming.
+>
+> To perform this check reliably, you will likely need to route the connection through a **SOCKS proxy** that has unrestricted access to port 25.
+>
+> Here is how you can configure it:
+> ```kotlin
+> import java.net.InetSocketAddress
+> import java.net.Proxy
+>
+> val verifier = emailVerifier {
+>     smtp {
+>         enabled = true
+>         // Configure a SOCKS proxy
+>         proxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress("your-proxy-host.com", 1080))
+>     }
+> }
+> ```
+
+### 4. Offline Mode
+
+To enable offline mode for all checks, set the `allOffline` property to `true`. This will use bundled data for all 
+supported checks and disable network-dependent checks.
+
+```kotlin
+val verifier = emailVerifier {
+    allOffline = true
+}
+
+val result = verifier.verify("mbalatsko@gmail.com")
+// result.mx will be SKIPPED
+// result.gravatar will be SKIPPED
+```
+
+You can also configure offline mode for each check individually.
+
+```kotlin
+val verifier = emailVerifier {
+    registrability {
+        offline = true // Use offline data for this check
+    }
+    disposability {
+        offline = true
+    }
+    // MX and Gravatar checks will still run unless disabled
+}
+```
+
+### 5. Advanced Configuration: Custom HttpClient
+
+The default `HttpClient` used by `EmailVerifier` is configured with a sensible retry policy (`retryOnServerErrors(maxRetries = 3)` with exponential backoff) to handle transient network issues.
+
+For more advanced use cases, such as adding custom headers or using a different engine, you can pass a custom-configured `HttpClient` to the `EmailVerifier`. This gives you full control over the network layer.
+
+Here's an example of how to configure a custom client:
+
+```kotlin
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.logging.*
+
+// Configure a custom HttpClient
+val customHttpClient = HttpClient(CIO) {
+    install(Logging) {
+        level = LogLevel.INFO
+    }
+    // The default retry logic is not included when providing a custom client.
+    // You can add it back if needed:
+    // install(HttpRequestRetry) {
+    //     retryOnServerErrors(maxRetries = 3)
+    //     exponentialDelay()
+    // }
+}
+
+// Pass the custom client in the configuration
+val verifier = emailVerifier {
+    httpClient = customHttpClient
+}
 ```
 
 Each check can return:
