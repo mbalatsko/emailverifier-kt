@@ -87,10 +87,10 @@ data class EmailValidationResult(
     val syntax: CheckResult<SyntaxValidationData>,
     val registrability: CheckResult<RegistrabilityData>,
     val mx: CheckResult<MxRecordData>,
-    val disposable: CheckResult<Unit>,
+    val disposable: CheckResult<DatasetData>,
     val gravatar: CheckResult<GravatarData>,
-    val free: CheckResult<Unit>,
-    val roleBasedUsername: CheckResult<Unit>,
+    val free: CheckResult<DatasetData>,
+    val roleBasedUsername: CheckResult<DatasetData>,
     val smtp: CheckResult<SmtpData>,
 ) {
     /**
@@ -175,6 +175,17 @@ data class GravatarData(
 )
 
 /**
+ * Data class holding the result of a dataset check (disposable, free, role-based).
+ *
+ * @property match true if a match was found in the dataset.
+ * @property matchedOn the specific entry that was matched, or null if no match was found.
+ */
+data class DatasetData(
+    val match: Boolean,
+    val matchedOn: String? = null,
+)
+
+/**
  * Data class holding the results of an SMTP check.
  *
  * @property isDeliverable true if the email address is deliverable.
@@ -196,7 +207,7 @@ Each check can return:
 - `Errored` ⚠️ (if an unexpected error occurred during the check)
 - `Skipped` ⏭️ (if not enabled or not applicable)
 
-For `Disposable Email Detection`, `Free Email Provider Detection`, and `Role-Based Username Detection`, the `data` field in `Passed` or `Failed` is `Unit` and carries no specific information beyond the success/failure status. The `Passed` state indicates the email is *not* disposable/free/role-based, while `Failed` indicates it *is*.
+For `Disposable Email Detection`, `Free Email Provider Detection`, and `Role-Based Username Detection`, the result is a `CheckResult<DatasetData>`. The `Passed` state indicates the email is *not* disposable/free/role-based, while `Failed` indicates it *is*. The `DatasetData` object provides more context, including the specific rule or entry that was matched.
 
 ## 🚀 Getting Started
 
@@ -307,6 +318,7 @@ val verifier = emailVerifier {
 val result = verifier.verify("mbalatsko@gmail.com")
 // result.mx will be SKIPPED
 // result.gravatar will be SKIPPED
+// result.smtp will be SKIPPED
 ```
 
 You can also configure offline mode for each check individually.
@@ -325,21 +337,28 @@ val verifier = emailVerifier {
 
 ### 5. Advanced Configuration: Custom HttpClient
 
-For more advanced use cases, such as configuring retries for network requests, you can pass a custom-configured `HttpClient` to the `EmailVerifier`. This gives you full control over the network layer.
+The default `HttpClient` used by `EmailVerifier` is configured with a sensible retry policy (`retryOnServerErrors(maxRetries = 3)` with exponential backoff) to handle transient network issues.
 
-Here's an example of how to configure an `HttpClient` with automatic retries using Ktor's `HttpRequestRetry` plugin:
+For more advanced use cases, such as adding custom headers or using a different engine, you can pass a custom-configured `HttpClient` to the `EmailVerifier`. This gives you full control over the network layer.
+
+Here's an example of how to configure a custom client:
 
 ```kotlin
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.*
+import io.ktor.client.plugins.logging.*
 
-// Configure an HttpClient with a retry policy
+// Configure a custom HttpClient
 val customHttpClient = HttpClient(CIO) {
-    install(HttpRequestRetry) {
-        retryOnServerErrors(maxRetries = 3)
-        exponentialDelay()
+    install(Logging) {
+        level = LogLevel.INFO
     }
+    // The default retry logic is not included when providing a custom client.
+    // You can add it back if needed:
+    // install(HttpRequestRetry) {
+    //     retryOnServerErrors(maxRetries = 3)
+    //     exponentialDelay()
+    // }
 }
 
 // Pass the custom client in the configuration

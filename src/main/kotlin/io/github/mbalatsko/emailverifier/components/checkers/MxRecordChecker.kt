@@ -1,11 +1,8 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
-import io.github.mbalatsko.emailverifier.VerificationError
-import io.ktor.client.HttpClient
+import io.github.mbalatsko.emailverifier.components.core.DnsLookupBackend
+import io.github.mbalatsko.emailverifier.components.core.EmailParts
 import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 /**
  * Represents a DNS MX (Mail Exchange) record.
@@ -18,79 +15,12 @@ data class MxRecord(
 )
 
 /**
- * Interface for DNS MX record lookup backends.
+ * Data class holding the MX records found during the MX record check.
+ * @property records A list of [MxRecord]s, or an empty list if none were found.
  */
-interface DnsLookupBackend {
-    /**
-     * Retrieves the MX records for a given hostname.
-     *
-     * @param hostname the domain to query.
-     * @return a list of [MxRecord]s, sorted by priority.
-     */
-    suspend fun getMxRecords(hostname: String): List<MxRecord>
-}
-
-/**
- * Implementation of [DnsLookupBackend] using Google's DNS-over-HTTPS (DoH) API.
- */
-class GoogleDoHLookupBackend(
-    private val httpClient: HttpClient,
-    private val baseURL: String = GOOGLE_DOH_URL,
-) : DnsLookupBackend {
-    @Serializable
-    private data class Answer(
-        val data: String,
-        val name: String,
-        val type: Int,
-    )
-
-    @Serializable
-    private data class DnsResponse(
-        val Answer: List<Answer>? = null,
-    )
-
-    private val json = Json { ignoreUnknownKeys = true }
-
-    /**
-     * Queries the DoH endpoint for MX records and parses them.
-     *
-     * @param hostname the domain to query.
-     * @return a list of [MxRecord]s sorted by priority.
-     * @throws VerificationError if the request fails or the server returns an error.
-     */
-    override suspend fun getMxRecords(hostname: String): List<MxRecord> {
-        val url = "$baseURL?name=$hostname&type=MX"
-        try {
-            val resp = httpClient.get(url)
-            if (resp.status.value >= 400) {
-                throw VerificationError("DoH server returned error: ${resp.status}")
-            }
-            val raw = resp.bodyAsText()
-            val dnsResponse = json.decodeFromString<DnsResponse>(raw)
-
-            return dnsResponse.Answer
-                ?.filter { it.type == MX_TYPE }
-                ?.mapNotNull {
-                    val parts = it.data.split(" ")
-                    if (parts.size == 2) {
-                        MxRecord(exchange = parts[1].removeSuffix("."), priority = parts[0].toInt())
-                    } else {
-                        null
-                    }
-                }?.sortedBy { -it.priority } ?: emptyList()
-        } catch (e: Exception) {
-            throw VerificationError("Failed to connect to DoH server", e)
-        }
-    }
-
-    companion object {
-        /** Type code for MX entries **/
-        private const val MX_TYPE = 15
-
-        /** Default URL for Google's DNS-over-HTTPS resolver. */
-        const val GOOGLE_DOH_URL = "https://dns.google/resolve"
-    }
-}
+data class MxRecordData(
+    val records: List<MxRecord>,
+)
 
 /**
  * Component that checks MX record presence using a specified [DnsLookupBackend].
@@ -99,12 +29,19 @@ class GoogleDoHLookupBackend(
  */
 class MxRecordChecker(
     private val dnsLookupBackend: DnsLookupBackend,
-) {
+) : IChecker<MxRecordData, Unit> {
     /**
-     * Retrieves MX records for the given hostname.
+     * Retrieves MX records for the email's hostname using the configured [DnsLookupBackend].
      *
-     * @param hostname the domain to check.
-     * @return a list of [MxRecord]s.
+     * @param email the decomposed parts of the email address to check.
+     * @param context (not used)
+     * @return an [MxRecordData] object containing the list of found MX records.
      */
-    suspend fun getRecords(hostname: String): List<MxRecord> = dnsLookupBackend.getMxRecords(hostname)
+    override suspend fun check(
+        email: EmailParts,
+        context: Unit,
+    ): MxRecordData =
+        MxRecordData(
+            dnsLookupBackend.getMxRecords(email.hostname),
+        )
 }

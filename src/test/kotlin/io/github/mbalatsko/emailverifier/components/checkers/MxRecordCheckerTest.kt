@@ -1,5 +1,8 @@
 package io.github.mbalatsko.emailverifier.components.checkers
-import io.github.mbalatsko.emailverifier.VerificationError
+import io.github.mbalatsko.emailverifier.components.core.ConnectionError
+import io.github.mbalatsko.emailverifier.components.core.DnsLookupBackend
+import io.github.mbalatsko.emailverifier.components.core.EmailParts
+import io.github.mbalatsko.emailverifier.components.core.GoogleDoHLookupBackend
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -75,12 +78,12 @@ class GoogleDoHLookupBackendTest {
         }
 
     @Test
-    fun `getMxRecords throws VerificationError on 5xx error`() =
+    fun `getMxRecords throws ConnectionError on 5xx error`() =
         runTest {
             val mockEngine = MockEngine { respondError(HttpStatusCode.InternalServerError) }
             val client = HttpClient(mockEngine)
             val backend = GoogleDoHLookupBackend(client)
-            assertFailsWith<VerificationError> {
+            assertFailsWith<ConnectionError> {
                 backend.getMxRecords("example.com")
             }
         }
@@ -94,10 +97,13 @@ class MxRecordCheckerTest {
     }
 
     @Test
-    fun `getRecords returns records from backend`() =
+    fun `check returns records from backend`() =
         runTest {
             val expectedRecords = listOf(MxRecord("mx.example.com", 10))
             val checker = MxRecordChecker(FakeDnsBackend(expectedRecords))
-            assertEquals(expectedRecords, checker.getRecords("any.domain"))
+            assertEquals(
+                expectedRecords,
+                checker.check(EmailParts("user", "", "any.domain"), Unit).records,
+            )
         }
 }

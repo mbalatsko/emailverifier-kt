@@ -1,18 +1,17 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
-import java.net.IDN
+import io.github.mbalatsko.emailverifier.components.core.EmailParts
 
 /**
- * Decomposed parts of a parsed email address.
- *
- * @property username the part before '+' and '@'.
- * @property plusTag the optional plus tag suffix (after '+', if present).
- * @property hostname the domain part of the email.
+ * Data class holding the validity of each part of the email syntax.
+ * @property username true if the username part is valid.
+ * @property plusTag true if the plus-tag part is valid.
+ * @property hostname true if the hostname part is valid.
  */
-data class EmailParts(
-    val username: String,
-    val plusTag: String,
-    val hostname: String,
+data class SyntaxValidationData(
+    val username: Boolean,
+    val plusTag: Boolean,
+    val hostname: Boolean,
 )
 
 /**
@@ -21,33 +20,16 @@ data class EmailParts(
  * Validates username (local-part), optional plus-tag extensions, and domain hostname
  * according to a subset of RFC 5322 and IDN rules.
  */
-class EmailSyntaxChecker {
-    /**
-     * Parses an email address into its logical parts.
-     *
-     * The local-part is split at the first '+' character (if present).
-     * The domain is converted to ASCII form using IDNA (punycode).
-     *
-     * @param email the input email address.
-     * @return the parsed [EmailParts].
-     * @throws IllegalArgumentException if the email does not contain exactly one '@'.
-     */
-    fun parseEmailParts(email: String): EmailParts {
-        val emailParts = email.split('@')
-        require(emailParts.size == 2) { "Email must have exactly one @ character." }
-
-        val hostname = IDN.toASCII(emailParts[1]).lowercase()
-
-        val usernameParts = emailParts[0].split('+', limit = 2)
-
-        val username = usernameParts[0]
-        val plusTag = usernameParts.getOrElse(1) { "" }
-        return EmailParts(
-            username,
-            plusTag,
-            hostname,
+class EmailSyntaxChecker : IChecker<SyntaxValidationData, Unit> {
+    override suspend fun check(
+        email: EmailParts,
+        context: Unit,
+    ): SyntaxValidationData =
+        SyntaxValidationData(
+            username = isUsernameValid(email.username),
+            plusTag = isPlusTagValid(email.plusTag),
+            hostname = isHostnameValid(email.hostname),
         )
-    }
 
     /**
      * Checks whether the provided username (local-part of email) is syntactically valid.

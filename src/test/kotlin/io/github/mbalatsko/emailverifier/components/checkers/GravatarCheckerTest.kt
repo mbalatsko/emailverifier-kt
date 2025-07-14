@@ -1,6 +1,7 @@
 package io.github.mbalatsko.emailverifier.components.checkers
 
-import io.github.mbalatsko.emailverifier.VerificationError
+import io.github.mbalatsko.emailverifier.components.core.ConnectionError
+import io.github.mbalatsko.emailverifier.components.core.EmailParts
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -13,8 +14,10 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class GravatarCheckerTest {
+    private val testEmail = EmailParts("test", "", "example.com")
+
     @Test
-    fun `getGravatarUrl returns URL for existing gravatar`() =
+    fun `check returns URL for existing gravatar`() =
         runTest {
             val mockEngine =
                 MockEngine {
@@ -22,11 +25,11 @@ class GravatarCheckerTest {
                 }
             val client = HttpClient(mockEngine)
             val checker = GravatarChecker(client)
-            assertNotNull(checker.getGravatarUrl("test@example.com"))
+            assertNotNull(checker.check(testEmail, Unit))
         }
 
     @Test
-    fun `getGravatarUrl returns null for non-existent gravatar`() =
+    fun `check returns null for non-existent gravatar`() =
         runTest {
             val mockEngine =
                 MockEngine {
@@ -34,11 +37,11 @@ class GravatarCheckerTest {
                 }
             val client = HttpClient(mockEngine)
             val checker = GravatarChecker(client)
-            assertNull(checker.getGravatarUrl("test@example.com"))
+            assertNull(checker.check(testEmail, Unit).gravatarUrl)
         }
 
     @Test
-    fun `getGravatarUrl throws VerificationError on 4xx error`() =
+    fun `check throws ConnectionError on 4xx error`() =
         runTest {
             val mockEngine =
                 MockEngine {
@@ -46,13 +49,13 @@ class GravatarCheckerTest {
                 }
             val client = HttpClient(mockEngine)
             val checker = GravatarChecker(client)
-            assertFailsWith<VerificationError> {
-                checker.getGravatarUrl("test@example.com")
+            assertFailsWith<ConnectionError> {
+                checker.check(testEmail, Unit)
             }
         }
 
     @Test
-    fun `getGravatarUrl throws VerificationError on 5xx error`() =
+    fun `check throws ConnectionError on 5xx error`() =
         runTest {
             val mockEngine =
                 MockEngine {
@@ -60,8 +63,8 @@ class GravatarCheckerTest {
                 }
             val client = HttpClient(mockEngine)
             val checker = GravatarChecker(client)
-            assertFailsWith<VerificationError> {
-                checker.getGravatarUrl("test@example.com")
+            assertFailsWith<ConnectionError> {
+                checker.check(testEmail, Unit)
             }
         }
 }
