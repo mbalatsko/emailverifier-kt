@@ -43,7 +43,7 @@ class RegistrabilityConfigBuilder {
     var pslUrl: String = RegistrabilityChecker.MOZILLA_PSL_URL
 
     /** Whether to use the bundled offline PSL data. */
-    var offline: Boolean = true
+    var offline: Boolean = false
 
     internal fun build() = RegistrabilityConfig(enabled, pslUrl, offline)
 }
