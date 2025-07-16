@@ -384,11 +384,35 @@ The `emailVerifier {}` call performs several network requests to download the ne
 To avoid re-downloading this data every time you want to verify an email, it is highly recommended to **create a single
 instance of the `EmailVerifier` and reuse it throughout the lifecycle of your application**.
 
-## ⚙️ Powered By
-* `ktor` for asynchronous HTTP
-* `java.net.IDN` for domain normalization (punycode)
-* Public Suffix List for registrability logic
-* Community-maintained disposable email blocklists
+## 7. Logging
+
+`EmailVerifier` uses the [SLF4J](https://www.slf4j.org/) logging facade. This allows you, as a user of the library, to choose your own logging framework (e.g., [Logback](http://logback.qos.ch/), [Log4j 2](https://logging.apache.org/log4j/2.x/), `slf4j-simple`). The library itself only includes the `slf4j-api` dependency, so it does not force a specific logging implementation on your application.
+
+By default, no logs will be produced unless you add a logging implementation to your project's dependencies.
+
+### Enabling Logs
+
+To see the logs from `EmailVerifier`, you need to add a dependency on an SLF4J implementation. For example, to use a simple logger that prints to standard output, you can add the following Gradle dependency:
+
+```groovy
+testImplementation("org.slf4j:slf4j-simple:2.0.13")
+```
+
+### Configuring Log Levels
+
+You can configure the log levels for the library's loggers to control the amount of output. The main logger categories are:
+
+*   `io.github.mbalatsko.emailverifier.EmailVerifierDslBuilder`: Logs the configuration and building process of the `EmailVerifier`.
+*   `io.github.mbalatsko.emailverifier.EmailVerifier`: Logs the overall verification process for each email.
+*   `io.github.mbalatsko.emailverifier.components.checkers.*`: Loggers for individual checks (e.g., `GravatarChecker`, `SmtpChecker`).
+*   `io.github.mbalatsko.emailverifier.components.core.*`: Loggers for core components like `GoogleDoHLookupBackend` and `SocketSmtpConnection`.
+*   `io.github.mbalatsko.emailverifier.components.providers.*`: Loggers for data providers like `OnlineLFDomainsProvider`.
+
+For example, with Logback, you could set the log level for the entire library to `DEBUG` by adding the following to your `logback.xml`:
+
+```xml
+<logger name="io.github.mbalatsko.emailverifier" level="DEBUG"/>
+```
 
 ## 🔮 Roadmap
 Planned features:

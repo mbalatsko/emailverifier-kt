@@ -17,6 +17,7 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpRequestRetry
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import org.slf4j.LoggerFactory
 import java.net.Proxy
 
 /**
@@ -258,6 +259,10 @@ class SmtpConfigBuilder {
  * DSL builder for configuring and initializing [EmailVerifier].
  */
 class EmailVerifierDslBuilder {
+    companion object {
+        private val logger = LoggerFactory.getLogger(EmailVerifierDslBuilder::class.java)
+    }
+
     /**
      * If true, all checks that support offline mode will use the bundled data.
      * This will also disable checks that do not support offline mode.
@@ -336,6 +341,8 @@ class EmailVerifierDslBuilder {
 
     internal suspend fun build(): EmailVerifier =
         coroutineScope {
+            logger.debug("Building EmailVerifier...")
+
             val currentHttpClient =
                 httpClient
                     ?: HttpClient(CIO) {
@@ -343,16 +350,25 @@ class EmailVerifierDslBuilder {
                             retryOnServerErrors(maxRetries = 3)
                             exponentialDelay()
                         }
+                    }.also {
+                        logger.debug("Created default HttpClient with retry policy.")
                     }
             val emailSyntaxChecker = EmailSyntaxChecker()
 
             val registrabilityConfig = registrability.build().let { if (allOffline) it.copy(offline = true) else it }
+            logger.debug("Registrability config: {}", registrabilityConfig)
             val mxRecordConfig = mxRecord.build().let { if (allOffline) it.copy(enabled = false) else it }
+            logger.debug("MX record config: {}", mxRecordConfig)
             val disposabilityConfig = disposability.build().let { if (allOffline) it.copy(offline = true) else it }
+            logger.debug("Disposability config: {}", disposabilityConfig)
             val gravatarConfig = gravatar.build().let { if (allOffline) it.copy(enabled = false) else it }
+            logger.debug("Gravatar config: {}", gravatarConfig)
             val freeConfig = free.build().let { if (allOffline) it.copy(offline = true) else it }
+            logger.debug("Free email config: {}", freeConfig)
             val roleBasedUsernameConfig = roleBasedUsername.build().let { if (allOffline) it.copy(offline = true) else it }
+            logger.debug("Role-based username config: {}", roleBasedUsernameConfig)
             val smtpConfig = smtp.build().let { if (allOffline) it.copy(enabled = false) else it }
+            logger.debug("SMTP config: {}", smtpConfig)
 
             val pslIndex = async { createPslIndex(registrabilityConfig, currentHttpClient) }
             val disposableEmailChecker = async { createDisposableEmailChecker(disposabilityConfig, currentHttpClient) }
@@ -371,7 +387,9 @@ class EmailVerifierDslBuilder {
                 freeChecker.await(),
                 roleBasedUsernameChecker.await(),
                 smtpChecker,
-            )
+            ).also {
+                logger.debug("EmailVerifier built successfully.")
+            }
         }
 
     /**
@@ -385,6 +403,7 @@ class EmailVerifierDslBuilder {
         config: RegistrabilityConfig,
         httpClient: HttpClient,
     ) = if (config.enabled) {
+        logger.debug("Creating RegistrabilityChecker (offline: {})...", config.offline)
         val provider =
             if (config.offline) {
                 OfflineLFDomainsProvider(RegistrabilityChecker.MOZILLA_PSL_RESOURCE_FILE)
@@ -393,6 +412,7 @@ class EmailVerifierDslBuilder {
             }
         RegistrabilityChecker.create(provider)
     } else {
+        logger.debug("RegistrabilityChecker is disabled.")
         null
     }
 
@@ -407,6 +427,7 @@ class EmailVerifierDslBuilder {
         config: DisposabilityConfig,
         httpClient: HttpClient,
     ) = if (config.enabled) {
+        logger.debug("Creating DisposableEmailChecker (offline: {})...", config.offline)
         val provider =
             if (config.offline) {
                 OfflineLFDomainsProvider(Constants.DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE)
@@ -415,6 +436,7 @@ class EmailVerifierDslBuilder {
             }
         HostnameInDatasetChecker.create(provider, config.allow, config.deny)
     } else {
+        logger.debug("DisposableEmailChecker is disabled.")
         null
     }
 
@@ -429,6 +451,7 @@ class EmailVerifierDslBuilder {
         config: FreeConfig,
         httpClient: HttpClient,
     ) = if (config.enabled) {
+        logger.debug("Creating FreeChecker (offline: {})...", config.offline)
         val provider =
             if (config.offline) {
                 OfflineLFDomainsProvider(Constants.FREE_EMAILS_LIST_RESOURCE_FILE)
@@ -437,6 +460,7 @@ class EmailVerifierDslBuilder {
             }
         HostnameInDatasetChecker.create(provider, config.allow, config.deny)
     } else {
+        logger.debug("FreeChecker is disabled.")
         null
     }
 
@@ -451,6 +475,7 @@ class EmailVerifierDslBuilder {
         config: RoleBasedUsernameConfig,
         httpClient: HttpClient,
     ) = if (config.enabled) {
+        logger.debug("Creating RoleBasedUsernameChecker (offline: {})...", config.offline)
         val provider =
             if (config.offline) {
                 OfflineLFDomainsProvider(Constants.ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE)
@@ -459,6 +484,7 @@ class EmailVerifierDslBuilder {
             }
         UsernameInDatasetChecker.create(provider, config.allow, config.deny)
     } else {
+        logger.debug("RoleBasedUsernameChecker is disabled.")
         null
     }
 
@@ -473,8 +499,10 @@ class EmailVerifierDslBuilder {
         config: MxRecordConfig,
         httpClient: HttpClient,
     ) = if (config.enabled) {
+        logger.debug("Creating MxRecordChecker...")
         MxRecordChecker(GoogleDoHLookupBackend(httpClient, config.dohServerEndpoint))
     } else {
+        logger.debug("MxRecordChecker is disabled.")
         null
     }
 
@@ -489,8 +517,10 @@ class EmailVerifierDslBuilder {
         config: GravatarConfig,
         httpClient: HttpClient,
     ) = if (config.enabled) {
+        logger.debug("Creating GravatarChecker...")
         GravatarChecker(httpClient)
     } else {
+        logger.debug("GravatarChecker is disabled.")
         null
     }
 
@@ -502,6 +532,7 @@ class EmailVerifierDslBuilder {
      */
     private fun createSmtpChecker(config: SmtpConfig) =
         if (config.enabled) {
+            logger.debug("Creating SmtpChecker...")
             SmtpChecker(
                 config.enableAllCatchCheck,
                 config.maxRetries,
@@ -510,6 +541,7 @@ class EmailVerifierDslBuilder {
                 },
             )
         } else {
+            logger.debug("SmtpChecker is disabled.")
             null
         }
 }

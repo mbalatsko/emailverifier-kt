@@ -3,6 +3,7 @@ package io.github.mbalatsko.emailverifier.components.checkers
 import io.github.mbalatsko.emailverifier.components.core.DnsLookupBackend
 import io.github.mbalatsko.emailverifier.components.core.EmailParts
 import io.ktor.client.request.get
+import org.slf4j.LoggerFactory
 
 /**
  * Represents a DNS MX (Mail Exchange) record.
@@ -40,8 +41,14 @@ class MxRecordChecker(
     override suspend fun check(
         email: EmailParts,
         context: Unit,
-    ): MxRecordData =
-        MxRecordData(
-            dnsLookupBackend.getMxRecords(email.hostname),
-        )
+    ): MxRecordData {
+        logger.debug("Looking up MX records for hostname: {}", email.hostname)
+        val records = dnsLookupBackend.getMxRecords(email.hostname)
+        logger.debug("Found {} MX records for {}: {}", records.size, email.hostname, records)
+        return MxRecordData(records)
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(MxRecordChecker::class.java)
+    }
 }

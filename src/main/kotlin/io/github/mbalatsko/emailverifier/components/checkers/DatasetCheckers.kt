@@ -2,6 +2,7 @@ package io.github.mbalatsko.emailverifier.components.checkers
 
 import io.github.mbalatsko.emailverifier.components.core.EmailParts
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
+import org.slf4j.LoggerFactory
 
 /**
  * Enum representing the source of a match in a dataset check.
@@ -47,6 +48,11 @@ abstract class BaseInDatasetChecker(
      */
     suspend fun loadData() {
         dataSet = domainsProvider.provide()
+        logger.debug("Loaded {} entries from {}", dataSet.size, domainsProvider::class.java.simpleName)
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(BaseInDatasetChecker::class.java)
     }
 }
 
@@ -83,6 +89,7 @@ class HostnameInDatasetChecker private constructor(
 
         val deniedCandidate = candidates.firstOrNull { it in denySet }
         if (deniedCandidate != null) {
+            logger.trace("Hostname {} is in the deny set.", deniedCandidate)
             return DatasetData(
                 match = true,
                 matchedOn = deniedCandidate,
@@ -91,6 +98,7 @@ class HostnameInDatasetChecker private constructor(
         }
 
         val matchedCandidate = candidates.firstOrNull { it in dataSet }
+        logger.trace("Hostname matched in dataset: {}", matchedCandidate)
         return DatasetData(
             match = matchedCandidate != null,
             matchedOn = matchedCandidate,
@@ -99,6 +107,8 @@ class HostnameInDatasetChecker private constructor(
     }
 
     companion object {
+        private val logger = LoggerFactory.getLogger(HostnameInDatasetChecker::class.java)
+
         /**
          * Creates and initializes a [HostnameInDatasetChecker].
          *
@@ -112,8 +122,10 @@ class HostnameInDatasetChecker private constructor(
             allowSet: Set<String>,
             denySet: Set<String>,
         ): HostnameInDatasetChecker {
+            logger.debug("Creating HostnameInDatasetChecker...")
             val hostnameInDatasetChecker = HostnameInDatasetChecker(domainsProvider, allowSet, denySet)
             hostnameInDatasetChecker.loadData()
+            logger.debug("HostnameInDatasetChecker created.")
             return hostnameInDatasetChecker
         }
     }
@@ -132,6 +144,7 @@ class UsernameInDatasetChecker private constructor(
         context: Unit,
     ): DatasetData {
         if (email.username in allowSet) {
+            logger.trace("Username {} is in the allow set.", email.username)
             return DatasetData(
                 match = false,
                 matchedOn = email.username,
@@ -140,6 +153,7 @@ class UsernameInDatasetChecker private constructor(
         }
 
         if (email.username in denySet) {
+            logger.trace("Username {} is in the deny set.", email.username)
             return DatasetData(
                 match = true,
                 matchedOn = email.username,
@@ -147,14 +161,18 @@ class UsernameInDatasetChecker private constructor(
             )
         }
 
+        val match = email.username in dataSet
+        logger.trace("Username matched in dataset: {}", match)
         return DatasetData(
-            match = email.username in dataSet,
-            matchedOn = if (email.username in dataSet) email.username else null,
-            source = if (email.username in dataSet) Source.DEFAULT else null,
+            match = match,
+            matchedOn = if (match) email.username else null,
+            source = if (match) Source.DEFAULT else null,
         )
     }
 
     companion object {
+        private val logger = LoggerFactory.getLogger(UsernameInDatasetChecker::class.java)
+
         /**
          * Creates and initializes a [UsernameInDatasetChecker].
          *
@@ -168,8 +186,10 @@ class UsernameInDatasetChecker private constructor(
             allowSet: Set<String>,
             denySet: Set<String>,
         ): UsernameInDatasetChecker {
+            logger.debug("Creating UsernameInDatasetChecker...")
             val usernameInDatasetChecker = UsernameInDatasetChecker(domainsProvider, allowSet, denySet)
             usernameInDatasetChecker.loadData()
+            logger.debug("UsernameInDatasetChecker created.")
             return usernameInDatasetChecker
         }
     }

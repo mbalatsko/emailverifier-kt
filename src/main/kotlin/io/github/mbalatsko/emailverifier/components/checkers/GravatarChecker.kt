@@ -7,6 +7,7 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import okio.ByteString.Companion.encodeUtf8
+import org.slf4j.LoggerFactory
 
 /**
  * Data class holding the Gravatar URL found during the Gravatar check.
@@ -45,23 +46,30 @@ class GravatarChecker(
                 .md5()
                 .hex()
         val url = "$baseURL/$emailHash?d=404"
+        logger.debug("Checking for Gravatar at URL: {}", url)
 
         try {
             val resp = httpClient.get(url)
             if (resp.status.value >= 400 && resp.status.value != 404) {
+                logger.warn("Gravatar server returned error: {}", resp.status)
                 throw ConnectionError("Gravatar server returned error: ${resp.status}")
             }
-            return if (resp.status == HttpStatusCode.OK && resp.bodyAsText() != GRAVATAR_DEFAULT_MD5) {
+            val hasGravatar = resp.status == HttpStatusCode.OK && resp.bodyAsText() != GRAVATAR_DEFAULT_MD5
+            logger.debug("Gravatar check result: hasGravatar={}", hasGravatar)
+            return if (hasGravatar) {
                 GravatarData(url)
             } else {
                 GravatarData(null)
             }
         } catch (e: Exception) {
+            logger.error("Failed to connect to Gravatar", e)
             throw ConnectionError("Failed to connect to Gravatar", e)
         }
     }
 
     companion object {
+        private val logger = LoggerFactory.getLogger(GravatarChecker::class.java)
+
         /**
          * Default Gravatar avatar URL.
          */
