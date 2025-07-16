@@ -3,6 +3,7 @@ package io.github.mbalatsko.emailverifier.components.checkers
 import io.github.mbalatsko.emailverifier.components.Constants
 import io.github.mbalatsko.emailverifier.components.core.EmailParts
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
+import org.slf4j.LoggerFactory
 
 /**
  * Data class holding the registrable domain found during the registrability check.
@@ -44,9 +45,11 @@ class RegistrabilityChecker(
      * Must be called before using [check].
      */
     suspend fun build() {
+        logger.debug("Building PSL index from {}...", domainsProvider::class.java.simpleName)
         root = Node()
         val rules = domainsProvider.provide()
         rules.forEach { add(it) }
+        logger.debug("PSL index built with {} rules.", rules.size)
     }
 
     /**
@@ -98,7 +101,10 @@ class RegistrabilityChecker(
             hostname
                 .split(".")
                 .reversed()
-        if (labels.size <= 1) return null // TLDs are not registrable
+        if (labels.size <= 1) {
+            logger.trace("Hostname {} is a TLD, not registrable.", hostname)
+            return null // TLDs are not registrable
+        }
 
         var node = root
 
@@ -111,12 +117,15 @@ class RegistrabilityChecker(
             node = next
 
             if (node.isException) {
+                logger.trace("Found exception rule for {}, registrable domain is {}.", hostname, eTld)
                 return eTld
             } else if (node.isSuffix || node.isWildcard) {
                 matchLen = i + 1
             }
         }
-        return if (matchLen != null && labels.size > matchLen) eTld else null
+        val registrableDomain = if (matchLen != null && labels.size > matchLen) eTld else null
+        logger.trace("For hostname {}, found registrable domain: {}", hostname, registrableDomain)
+        return registrableDomain
     }
 
     /**
@@ -135,6 +144,8 @@ class RegistrabilityChecker(
         )
 
     companion object {
+        private val logger = LoggerFactory.getLogger(RegistrabilityChecker::class.java)
+
         /** Default URL to Mozilla-maintained Public Suffix List. */
         const val MOZILLA_PSL_URL = "https://publicsuffix.org/list/public_suffix_list.dat"
 
@@ -147,8 +158,10 @@ class RegistrabilityChecker(
          * @return an initialized [RegistrabilityChecker].
          */
         suspend fun create(domainsProvider: DomainsProvider): RegistrabilityChecker {
+            logger.debug("Creating RegistrabilityChecker...")
             val index = RegistrabilityChecker(domainsProvider)
             index.build()
+            logger.debug("RegistrabilityChecker created.")
             return index
         }
     }

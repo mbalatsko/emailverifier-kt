@@ -1,5 +1,6 @@
 package io.github.mbalatsko.emailverifier.components.core
 
+import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
@@ -60,6 +61,7 @@ class SocketSmtpConnection(
     var writer: BufferedWriter
 
     init {
+        logger.debug("Connecting to SMTP server at {}:{} via {}...", address, port, proxy ?: "direct connection")
         socket.connect(InetSocketAddress(address, port), timeoutMillis)
         socket.soTimeout = timeoutMillis
 
@@ -67,23 +69,33 @@ class SocketSmtpConnection(
         writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream()))
 
         val resp = readResponse()
+        logger.trace("Initial SMTP response: {}", resp)
         require(resp.code == 220) { "Server did not respond with 220 code, ${resp.code} got instead" }
+        logger.debug("Successfully connected to {}:{}", address, port)
     }
 
     private fun readResponse(): SmtpResponse {
         val line = reader.readLine() ?: return SmtpResponse(0, "")
         val code = line.take(3).toIntOrNull() ?: 0
-        return SmtpResponse(code, line)
+        val response = SmtpResponse(code, line)
+        logger.trace("SMTP << {}", response)
+        return response
     }
 
     override fun sendCommand(cmd: String): SmtpResponse {
+        logger.trace("SMTP >> {}", cmd)
         writer.write("$cmd\r\n")
         writer.flush()
         return readResponse()
     }
 
     override fun close() {
+        logger.debug("Closing SMTP connection.")
         socket.close()
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(SocketSmtpConnection::class.java)
     }
 }
 

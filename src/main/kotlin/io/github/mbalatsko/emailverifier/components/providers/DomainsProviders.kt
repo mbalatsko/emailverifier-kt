@@ -3,6 +3,7 @@ package io.github.mbalatsko.emailverifier.components.providers
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
+import org.slf4j.LoggerFactory
 import java.net.IDN
 
 /**
@@ -30,12 +31,20 @@ abstract class LFDomainsProvider : DomainsProvider {
      */
     abstract suspend fun obtainData(): String
 
-    override suspend fun provide(): Set<String> =
-        obtainData()
-            .lineSequence()
-            .filter { it.isNotEmpty() && !it.startsWith("//") }
-            .map { IDN.toASCII(it.trim().lowercase()) }
-            .toSet()
+    override suspend fun provide(): Set<String> {
+        val lines =
+            obtainData()
+                .lineSequence()
+                .filter { it.isNotEmpty() && !it.startsWith("//") }
+                .map { IDN.toASCII(it.trim().lowercase()) }
+                .toSet()
+        logger.debug("Parsed {} valid lines from fetched data.", lines.size)
+        return lines
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(LFDomainsProvider::class.java)
+    }
 }
 
 /**
@@ -53,17 +62,27 @@ class OnlineLFDomainsProvider(
      *
      * @return the response body as raw text.
      */
-    override suspend fun obtainData(): String =
-        try {
+    override suspend fun obtainData(): String {
+        logger.debug("Fetching domains from URL: {}", url)
+        return try {
             val response = httpClient.get(url)
             if (response.status.value >= 400) {
+                logger.warn("Failed to fetch domains from {}: HTTP status {}", url, response.status)
                 ""
             } else {
-                response.bodyAsText()
+                val data = response.bodyAsText()
+                logger.debug("Successfully fetched {} bytes from {}", data.length, url)
+                data
             }
         } catch (e: Exception) {
+            logger.error("Error fetching domains from {}", url, e)
             ""
         }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(OnlineLFDomainsProvider::class.java)
+    }
 }
 
 /**
@@ -85,5 +104,14 @@ class OfflineLFDomainsProvider(
      *
      * @return the content of the resource file as raw text.
      */
-    override suspend fun obtainData(): String = resourceUrl!!.readText()
+    override suspend fun obtainData(): String {
+        logger.debug("Loading domains from resource file: {}", resourcesFilePath)
+        val data = resourceUrl!!.readText()
+        logger.debug("Successfully loaded {} bytes from {}", data.length, resourcesFilePath)
+        return data
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(OfflineLFDomainsProvider::class.java)
+    }
 }

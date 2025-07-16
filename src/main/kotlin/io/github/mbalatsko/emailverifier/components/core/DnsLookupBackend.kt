@@ -6,6 +6,7 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.slf4j.LoggerFactory
 
 /**
  * Interface for DNS MX record lookup backends.
@@ -50,30 +51,40 @@ class GoogleDoHLookupBackend(
      */
     override suspend fun getMxRecords(hostname: String): List<MxRecord> {
         val url = "$baseURL?name=$hostname&type=MX"
+        logger.debug("Querying DoH server for MX records: {}", url)
         try {
             val resp = httpClient.get(url)
             if (resp.status.value >= 400) {
+                logger.warn("DoH server returned error: {}", resp.status)
                 throw ConnectionError("DoH server returned error: ${resp.status}")
             }
             val raw = resp.bodyAsText()
+            logger.trace("DoH server response: {}", raw)
             val dnsResponse = json.decodeFromString<DnsResponse>(raw)
 
-            return dnsResponse.Answer
-                ?.filter { it.type == MX_TYPE }
-                ?.mapNotNull {
-                    val parts = it.data.split(" ")
-                    if (parts.size == 2) {
-                        MxRecord(exchange = parts[1].removeSuffix("."), priority = parts[0].toInt())
-                    } else {
-                        null
-                    }
-                }?.sortedBy { -it.priority } ?: emptyList()
+            val records =
+                dnsResponse.Answer
+                    ?.filter { it.type == MX_TYPE }
+                    ?.mapNotNull {
+                        val parts = it.data.split(" ")
+                        if (parts.size == 2) {
+                            MxRecord(exchange = parts[1].removeSuffix("."), priority = parts[0].toInt())
+                        } else {
+                            logger.warn("Invalid MX record format: {}", it.data)
+                            null
+                        }
+                    }?.sortedBy { -it.priority } ?: emptyList()
+            logger.debug("Parsed {} MX records for {}.", records.size, hostname)
+            return records
         } catch (e: Exception) {
+            logger.error("Failed to connect to DoH server at {}", baseURL, e)
             throw ConnectionError("Failed to connect to DoH server", e)
         }
     }
 
     companion object {
+        private val logger = LoggerFactory.getLogger(GoogleDoHLookupBackend::class.java)
+
         /** Type code for MX entries **/
         private const val MX_TYPE = 15
 
