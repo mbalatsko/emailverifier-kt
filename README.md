@@ -40,6 +40,7 @@ Ensures the domain is actually configured to receive emails:
 Filters out **temporary/disposable** email domains:
 - Uses curated lists from [disposable-email-domains](https://github.com/disposable/disposable-email-domains)
 - Detects domains like `mailinator.com`, `tempmail.org`, etc.
+- You can also specify `allow` and `deny` sets to customize the behavior for specific domains.
 
 ### 5. **Gravatar Existence Check**
 
@@ -51,12 +52,14 @@ Detects whether an email has an associated **Gravatar**:
 Checks whether the email domain belongs to a known free‐email provider (e.g. `gmail.com`, `yahoo.com`) 
 using a curated list of popular services.
 - Returns `Passed` result if email hostname is not a known free‐email provider
+- You can also specify `allow` and `deny` sets to customize the behavior for specific domains.
 
 List used: [Github gist](https://gist.github.com/okutbay/5b4974b70673dfdcc21c517632c1f984) by @okutbay 
 
 ### 7. **Role-Based Username Detection**
 Detects generic or departmental username (e.g. `info@`, `admin@`, `support@`) by checking against a curated list of common role-based usernames.
 - Returns `Passed` result if email username is not a known role-based username
+- You can also specify `allow` and `deny` sets to customize the behavior for specific usernames.
 
 List used: https://github.com/mbalatsko/role-based-email-addresses-list (original repo: https://github.com/mixmaxhq/role-based-email-addresses)
 
@@ -179,10 +182,12 @@ data class GravatarData(
  *
  * @property match true if a match was found in the dataset.
  * @property matchedOn the specific entry that was matched, or null if no match was found.
+ * @property source the source of the match (e.g., "allow", "deny", "default").
  */
 data class DatasetData(
     val match: Boolean,
     val matchedOn: String? = null,
+    val source: Source? = null,
 )
 
 /**
@@ -263,6 +268,8 @@ val verifier = emailVerifier {
     disposability {
         enabled = true // Explicitly enable (default is true)
         domainsListUrl = "https://my.custom.domain/disposable_domains.txt" // Custom disposable domains list
+        allow = setOf("my-disposable-domain.com") // Whitelist a disposable domain
+        deny = setOf("my-domain.com") // Blacklist a domain
     }
     gravatar {
         enabled = true // Explicitly enable (default is true)
@@ -270,10 +277,14 @@ val verifier = emailVerifier {
     free {
         enabled = false // Disable free email provider checks
         // domainsListUrl = "https://my.custom.domain/free_emails.txt" // Custom free emails list if enabled
+        allow = setOf("gmail.com") // Whitelist a free email provider
+        deny = setOf("my-free-domain.com") // Blacklist a domain
     }
     roleBasedUsername {
         enabled = true // Explicitly enable (default is true)
         usernamesListUrl = "https://my.custom.domain/role_based_usernames.txt" // Custom role-based usernames list
+        allow = setOf("admin") // Whitelist a role-based username
+        deny = setOf("my-username") // Blacklist a username
     }
     smtp {
         enabled = true // IMPORTANT: Disabled by default. See notes below.

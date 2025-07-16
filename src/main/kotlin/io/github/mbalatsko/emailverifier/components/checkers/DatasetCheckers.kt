@@ -4,23 +4,38 @@ import io.github.mbalatsko.emailverifier.components.core.EmailParts
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
 
 /**
+ * Enum representing the source of a match in a dataset check.
+ */
+enum class Source {
+    ALLOW,
+    DENY,
+    DEFAULT,
+}
+
+/**
  * Data class holding the result of a dataset check.
  *
  * @property match true if a match was found in the dataset.
  * @property matchedOn the specific entry that was matched, or null if no match was found.
+ * @property source the source of the match (e.g., "allow", "deny", "default").
  */
 data class DatasetData(
     val match: Boolean,
     val matchedOn: String? = null,
+    val source: Source? = null,
 )
 
 /**
  * Base class for checkers that verify if a part of an email address exists in a given dataset.
  *
  * @property domainsProvider the provider for the dataset.
+ * @property allowSet a set of values to be treated as valid.
+ * @property denySet a set of values to be treated as invalid.
  */
 abstract class BaseInDatasetChecker(
     private val domainsProvider: DomainsProvider,
+    protected val allowSet: Set<String>,
+    protected val denySet: Set<String>,
 ) : IChecker<DatasetData, Unit> {
     /**
      * The set of data loaded from the [domainsProvider].
@@ -41,7 +56,9 @@ abstract class BaseInDatasetChecker(
  */
 class HostnameInDatasetChecker private constructor(
     domainsProvider: DomainsProvider,
-) : BaseInDatasetChecker(domainsProvider) {
+    allowSet: Set<String>,
+    denySet: Set<String>,
+) : BaseInDatasetChecker(domainsProvider, allowSet, denySet) {
     override suspend fun check(
         email: EmailParts,
         context: Unit,
@@ -54,10 +71,30 @@ class HostnameInDatasetChecker private constructor(
             val partialHostname = labels.slice(i..labels.size - 1).joinToString(".")
             candidates.add(partialHostname)
         }
+
+        val allowedCandidate = candidates.firstOrNull { it in allowSet }
+        if (allowedCandidate != null) {
+            return DatasetData(
+                match = false,
+                matchedOn = allowedCandidate,
+                source = Source.ALLOW,
+            )
+        }
+
+        val deniedCandidate = candidates.firstOrNull { it in denySet }
+        if (deniedCandidate != null) {
+            return DatasetData(
+                match = true,
+                matchedOn = deniedCandidate,
+                source = Source.DENY,
+            )
+        }
+
         val matchedCandidate = candidates.firstOrNull { it in dataSet }
         return DatasetData(
             match = matchedCandidate != null,
             matchedOn = matchedCandidate,
+            source = if (matchedCandidate != null) Source.DEFAULT else null,
         )
     }
 
@@ -66,10 +103,16 @@ class HostnameInDatasetChecker private constructor(
          * Creates and initializes a [HostnameInDatasetChecker].
          *
          * @param domainsProvider the provider for the hostname dataset.
+         * @param allowSet a set of hostnames to be treated as valid.
+         * @param denySet a set of hostnames to be treated as invalid.
          * @return an initialized [HostnameInDatasetChecker].
          */
-        suspend fun create(domainsProvider: DomainsProvider): HostnameInDatasetChecker {
-            val hostnameInDatasetChecker = HostnameInDatasetChecker(domainsProvider)
+        suspend fun create(
+            domainsProvider: DomainsProvider,
+            allowSet: Set<String>,
+            denySet: Set<String>,
+        ): HostnameInDatasetChecker {
+            val hostnameInDatasetChecker = HostnameInDatasetChecker(domainsProvider, allowSet, denySet)
             hostnameInDatasetChecker.loadData()
             return hostnameInDatasetChecker
         }
@@ -81,25 +124,51 @@ class HostnameInDatasetChecker private constructor(
  */
 class UsernameInDatasetChecker private constructor(
     domainsProvider: DomainsProvider,
-) : BaseInDatasetChecker(domainsProvider) {
+    allowSet: Set<String>,
+    denySet: Set<String>,
+) : BaseInDatasetChecker(domainsProvider, allowSet, denySet) {
     override suspend fun check(
         email: EmailParts,
         context: Unit,
-    ): DatasetData =
-        DatasetData(
+    ): DatasetData {
+        if (email.username in allowSet) {
+            return DatasetData(
+                match = false,
+                matchedOn = email.username,
+                source = Source.ALLOW,
+            )
+        }
+
+        if (email.username in denySet) {
+            return DatasetData(
+                match = true,
+                matchedOn = email.username,
+                source = Source.DENY,
+            )
+        }
+
+        return DatasetData(
             match = email.username in dataSet,
             matchedOn = if (email.username in dataSet) email.username else null,
+            source = if (email.username in dataSet) Source.DEFAULT else null,
         )
+    }
 
     companion object {
         /**
          * Creates and initializes a [UsernameInDatasetChecker].
          *
          * @param domainsProvider the provider for the username dataset.
+         * @param allowSet a set of usernames to be treated as valid.
+         * @param denySet a set of usernames to be treated as invalid.
          * @return an initialized [UsernameInDatasetChecker].
          */
-        suspend fun create(domainsProvider: DomainsProvider): UsernameInDatasetChecker {
-            val usernameInDatasetChecker = UsernameInDatasetChecker(domainsProvider)
+        suspend fun create(
+            domainsProvider: DomainsProvider,
+            allowSet: Set<String>,
+            denySet: Set<String>,
+        ): UsernameInDatasetChecker {
+            val usernameInDatasetChecker = UsernameInDatasetChecker(domainsProvider, allowSet, denySet)
             usernameInDatasetChecker.loadData()
             return usernameInDatasetChecker
         }
