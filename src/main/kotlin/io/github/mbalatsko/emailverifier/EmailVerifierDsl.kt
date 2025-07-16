@@ -78,11 +78,15 @@ class MxRecordConfigBuilder {
  * @property enabled whether this check should be performed.
  * @property domainsListUrl URL to the disposable email domains list.
  * @property offline whether to use the bundled offline disposable email domains list.
+ * @property allow a set of domains to be treated as not disposable.
+ * @property deny a set of domains to be treated as disposable.
  */
 data class DisposabilityConfig(
     val enabled: Boolean,
     val domainsListUrl: String,
     val offline: Boolean,
+    val allow: Set<String>,
+    val deny: Set<String>,
 )
 
 /**
@@ -98,7 +102,13 @@ class DisposabilityConfigBuilder {
     /** Whether to use the bundled offline disposable email domains list. */
     var offline: Boolean = false
 
-    internal fun build() = DisposabilityConfig(enabled, domainsListUrl, offline)
+    /** A set of domains to be treated as not disposable. */
+    var allow: Set<String> = emptySet()
+
+    /** A set of domains to be treated as disposable. */
+    var deny: Set<String> = emptySet()
+
+    internal fun build() = DisposabilityConfig(enabled, domainsListUrl, offline, allow, deny)
 }
 
 /**
@@ -126,11 +136,15 @@ class GravatarConfigBuilder {
  * @property enabled whether this check should be performed.
  * @property domainsListUrl URL to the free email provider domains list.
  * @property offline whether to use the bundled offline free email provider domains list.
+ * @property allow a set of domains to be treated as not free.
+ * @property deny a set of domains to be treated as free.
  */
 data class FreeConfig(
     val enabled: Boolean,
     val domainsListUrl: String,
     val offline: Boolean,
+    val allow: Set<String>,
+    val deny: Set<String>,
 )
 
 /**
@@ -146,7 +160,13 @@ class FreeConfigBuilder {
     /** Whether to use the bundled offline free email provider domains list. */
     var offline: Boolean = false
 
-    internal fun build() = FreeConfig(enabled, domainsListUrl, offline)
+    /** A set of domains to be treated as not free. */
+    var allow: Set<String> = emptySet()
+
+    /** A set of domains to be treated as free. */
+    var deny: Set<String> = emptySet()
+
+    internal fun build() = FreeConfig(enabled, domainsListUrl, offline, allow, deny)
 }
 
 /**
@@ -155,11 +175,15 @@ class FreeConfigBuilder {
  * @property enabled whether this check should be performed.
  * @property usernamesListUrl URL to the role-based usernames list.
  * @property offline whether to use the bundled offline role-based usernames list.
+ * @property allow a set of usernames to be treated as not role-based.
+ * @property deny a set of usernames to be treated as role-based.
  */
 data class RoleBasedUsernameConfig(
     val enabled: Boolean,
     val usernamesListUrl: String,
     val offline: Boolean,
+    val allow: Set<String>,
+    val deny: Set<String>,
 )
 
 /**
@@ -175,7 +199,13 @@ class RoleBasedUsernameConfigBuilder {
     /** Whether to use the bundled offline role-based usernames list. */
     var offline: Boolean = false
 
-    internal fun build() = RoleBasedUsernameConfig(enabled, usernamesListUrl, offline)
+    /** A set of usernames to be treated as not role-based. */
+    var allow: Set<String> = emptySet()
+
+    /** A set of usernames to be treated as role-based. */
+    var deny: Set<String> = emptySet()
+
+    internal fun build() = RoleBasedUsernameConfig(enabled, usernamesListUrl, offline, allow, deny)
 }
 
 /**
@@ -383,7 +413,7 @@ class EmailVerifierDslBuilder {
             } else {
                 OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
             }
-        HostnameInDatasetChecker.create(provider)
+        HostnameInDatasetChecker.create(provider, config.allow, config.deny)
     } else {
         null
     }
@@ -405,7 +435,7 @@ class EmailVerifierDslBuilder {
             } else {
                 OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
             }
-        HostnameInDatasetChecker.create(provider)
+        HostnameInDatasetChecker.create(provider, config.allow, config.deny)
     } else {
         null
     }
@@ -427,7 +457,7 @@ class EmailVerifierDslBuilder {
             } else {
                 OnlineLFDomainsProvider(config.usernamesListUrl, httpClient)
             }
-        UsernameInDatasetChecker.create(provider)
+        UsernameInDatasetChecker.create(provider, config.allow, config.deny)
     } else {
         null
     }

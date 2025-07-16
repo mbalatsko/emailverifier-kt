@@ -29,15 +29,28 @@ class EmailVerifierLocalTest {
         override suspend fun getMxRecords(hostname: String): List<MxRecord> = mxRecords
     }
 
-    private suspend fun buildVerifier(mxRecords: List<MxRecord>): EmailVerifier =
+    private suspend fun buildVerifier(
+        mxRecords: List<MxRecord>,
+        disposableAllow: Set<String> = emptySet(),
+        disposableDeny: Set<String> = emptySet(),
+        freeAllow: Set<String> = emptySet(),
+        freeDeny: Set<String> = emptySet(),
+        roleAllow: Set<String> = emptySet(),
+        roleDeny: Set<String> = emptySet(),
+    ): EmailVerifier =
         EmailVerifier(
             emailSyntaxChecker = EmailSyntaxChecker(),
             registrabilityChecker = RegistrabilityChecker.create(FixedListProvider(setOf("com", "co.uk"))),
             mxRecordChecker = MxRecordChecker(FakeDnsBackend(mxRecords)),
-            disposableEmailChecker = HostnameInDatasetChecker.create(FixedListProvider(setOf("disposable.com"))),
+            disposableEmailChecker =
+                HostnameInDatasetChecker.create(
+                    FixedListProvider(setOf("disposable.com")),
+                    disposableAllow,
+                    disposableDeny,
+                ),
             gravatarChecker = null,
-            freeChecker = HostnameInDatasetChecker.create(FixedListProvider(setOf("free.com"))),
-            roleBasedUsernameChecker = UsernameInDatasetChecker.create(FixedListProvider(setOf("role"))),
+            freeChecker = HostnameInDatasetChecker.create(FixedListProvider(setOf("free.com")), freeAllow, freeDeny),
+            roleBasedUsernameChecker = UsernameInDatasetChecker.create(FixedListProvider(setOf("role")), roleAllow, roleDeny),
             smtpChecker = null,
         )
 
@@ -109,6 +122,30 @@ class EmailVerifierLocalTest {
             val result = verifier.verify("role@example.com")
             assertTrue(result.isLikelyDeliverable()) // role-based is not a strong indicator
             assertTrue(result.roleBasedUsername is CheckResult.Failed)
+        }
+
+    @Test
+    fun `allow and deny sets work as expected`() =
+        runTest {
+            val verifier =
+                buildVerifier(
+                    mxRecords = listOf(MxRecord("mx.example.com", 10)),
+                    disposableAllow = setOf("disposable.com"),
+                    freeDeny = setOf("example.com"),
+                    roleAllow = setOf("role"),
+                )
+
+            var result = verifier.verify("user@disposable.com")
+            assertTrue(result.isLikelyDeliverable())
+            assertTrue(result.disposable is CheckResult.Passed)
+
+            result = verifier.verify("user@example.com")
+            assertTrue(result.isLikelyDeliverable())
+            assertTrue(result.free is CheckResult.Failed)
+
+            result = verifier.verify("role@example.com")
+            assertTrue(result.isLikelyDeliverable())
+            assertTrue(result.roleBasedUsername is CheckResult.Passed)
         }
 
     private class ErrorDnsBackend : DnsLookupBackend {
