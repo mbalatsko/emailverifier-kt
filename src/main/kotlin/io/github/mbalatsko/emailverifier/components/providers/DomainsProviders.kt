@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import org.slf4j.LoggerFactory
+import java.io.File
 import java.net.IDN
 
 /**
@@ -90,7 +91,7 @@ class OnlineLFDomainsProvider(
  *
  * @property resourcesFilePath the path to the linefeed-separated domain list within the resources.
  */
-class OfflineLFDomainsProvider(
+class ResourceFileLFDomainsProvider(
     private val resourcesFilePath: String,
 ) : LFDomainsProvider() {
     private val resourceUrl = this.javaClass.getResource(resourcesFilePath)
@@ -112,6 +113,33 @@ class OfflineLFDomainsProvider(
     }
 
     companion object {
-        private val logger = LoggerFactory.getLogger(OfflineLFDomainsProvider::class.java)
+        private val logger = LoggerFactory.getLogger(ResourceFileLFDomainsProvider::class.java)
+    }
+}
+
+/**
+ * [LFDomainsProvider] implementation that retrieves domain data from a file on the local filesystem.
+ *
+ * @param filePath the path to the linefeed-separated domain list on the filesystem.
+ */
+class FileLFDomainsProvider(
+    filePath: String,
+) : LFDomainsProvider() {
+    private val file = File(filePath)
+
+    init {
+        require(file.exists()) { "$filePath does not exist" }
+        require(file.isFile) { "$filePath must be normal file" }
+    }
+
+    override suspend fun obtainData(): String {
+        logger.debug("Loading domains from file: {}", file.path)
+        val data = file.readText()
+        logger.debug("Successfully loaded {} bytes from {}", data.length, file.path)
+        return data
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(FileLFDomainsProvider::class.java)
     }
 }

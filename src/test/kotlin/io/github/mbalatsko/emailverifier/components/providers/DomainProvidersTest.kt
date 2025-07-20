@@ -5,6 +5,10 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.createTempFile
+import kotlin.io.path.deleteExisting
+import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -67,18 +71,39 @@ class DomainProvidersTest {
         }
 
     @Test
-    fun `offline provider returns expected data`() =
+    fun `resource file provider returns expected data`() =
         runTest {
-            val provider = OfflineLFDomainsProvider("/offline-data/disposable.txt")
+            val provider = ResourceFileLFDomainsProvider("/test.txt")
             val result = provider.provide()
             assertTrue(result.contains("yopmail.com"))
             assertTrue(result.contains("simplelogin.com"))
         }
 
     @Test
-    fun `offline provider throws for non-existent resource`() {
+    fun `resource file provider throws for non-existent resource`() {
         kotlin.test.assertFailsWith<IllegalArgumentException> {
-            OfflineLFDomainsProvider("non-existent-file.txt")
+            ResourceFileLFDomainsProvider("non-existent-file.txt")
+        }
+    }
+
+    @Test
+    fun `file provider returns expected data`() =
+        runTest {
+            val tempFile = createTempFile(prefix = "domains", suffix = ".txt")
+            tempFile.writeText("domain.com")
+
+            val provider = FileLFDomainsProvider(tempFile.absolutePathString())
+            val result = provider.provide()
+            assertTrue(result.contains("domain.com"))
+
+            // cleanup
+            tempFile.deleteExisting()
+        }
+
+    @Test
+    fun `file file provider throws for non-existent resource`() {
+        kotlin.test.assertFailsWith<IllegalArgumentException> {
+            FileLFDomainsProvider("/non-existent-file.txt")
         }
     }
 }
