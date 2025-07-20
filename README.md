@@ -259,7 +259,6 @@ val verifier = emailVerifier {
     registrability {
         enabled = true // Explicitly enable (default is true)
         pslUrl  = "https://my.custom.domain/public_suffix_list.dat" // Custom PSL URL
-        offline = false // Use online data for this check
     }
     mxRecord {
         enabled = false // Disable MX record checks
@@ -332,12 +331,12 @@ val result = verifier.verify("mbalatsko@gmail.com")
 // result.smtp will be SKIPPED
 ```
 
-You can also configure offline mode for each check individually.
+You can also configure offline mode for each check individually. When `offline` is set to `true` for a specific check, the verifier will use the bundled data by default. You can override this by providing a custom data source (see [Using Custom Data Sources](#5-using-custom-data-sources)).
 
 ```kotlin
 val verifier = emailVerifier {
     registrability {
-        offline = true // Use offline data for this check
+        offline = true // Use bundled offline data for this check
     }
     disposability {
         offline = true
@@ -346,7 +345,43 @@ val verifier = emailVerifier {
 }
 ```
 
-### 5. Advanced Configuration: Custom HttpClient
+### 5. Using Custom Data Sources
+
+For checks that rely on external datasets (Registrability, Disposability, Free Email, and Role-Based Username), you can override the default data sources by providing your own files. This is useful for testing, working with proprietary lists, or when you need to manage datasets locally.
+
+You can provide a file from your project's **resources** or from the local **filesystem**.
+
+#### From Classpath Resources
+
+Place your data file (e.g., `my_disposable_domains.txt`) in your project's `src/main/resources` directory. Then, configure the verifier to use it by setting the `resourcesFilePath` property.
+
+```kotlin
+val verifier = emailVerifier {
+    disposability {
+        offline = true // Required when using custom file-based sources
+        resourcesFilePath = "/my_disposable_domains.txt"
+    }
+    // You can do the same for registrability, free, and roleBasedUsername checks
+}
+```
+
+#### From the Filesystem
+
+You can also load a data file from any path on the local filesystem using the `filePath` property.
+
+```kotlin
+val verifier = emailVerifier {
+    disposability {
+        offline = true // Required when using custom file-based sources
+        filePath = "/path/to/your/disposable_domains.txt"
+    }
+}
+```
+
+> **Note:** When using `resourcesFilePath` or `filePath`, you must set `offline = true` for that specific check. This tells the verifier to use local data providers instead of fetching data from the network. Note that `resourcesFilePath` and `filePath` cannot be set at the same time.
+
+
+### 6. Advanced Configuration: Custom HttpClient
 
 The default `HttpClient` used by `EmailVerifier` is configured with a sensible retry policy (`retryOnServerErrors(maxRetries = 3)` with exponential backoff) to handle transient network issues.
 
