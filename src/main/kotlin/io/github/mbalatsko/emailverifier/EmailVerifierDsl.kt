@@ -4,12 +4,14 @@ import io.github.mbalatsko.emailverifier.components.Constants
 import io.github.mbalatsko.emailverifier.components.checkers.EmailSyntaxChecker
 import io.github.mbalatsko.emailverifier.components.checkers.GravatarChecker
 import io.github.mbalatsko.emailverifier.components.checkers.HostnameInDatasetChecker
+import io.github.mbalatsko.emailverifier.components.checkers.IChecker
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecordChecker
 import io.github.mbalatsko.emailverifier.components.checkers.RegistrabilityChecker
 import io.github.mbalatsko.emailverifier.components.checkers.SmtpChecker
 import io.github.mbalatsko.emailverifier.components.checkers.UsernameInDatasetChecker
 import io.github.mbalatsko.emailverifier.components.core.GoogleDoHLookupBackend
 import io.github.mbalatsko.emailverifier.components.core.SocketSmtpConnection
+import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
 import io.github.mbalatsko.emailverifier.components.providers.FileLFDomainsProvider
 import io.github.mbalatsko.emailverifier.components.providers.OnlineLFDomainsProvider
 import io.github.mbalatsko.emailverifier.components.providers.ResourceFileLFDomainsProvider
@@ -21,40 +23,36 @@ import kotlinx.coroutines.coroutineScope
 import org.slf4j.LoggerFactory
 import java.net.Proxy
 
-fun validateFilePaths(
-    resourcesFilePath: String?,
-    filePath: String?,
-) {
-    require(resourcesFilePath != null || filePath != null) {
-        "At least one of resourcesFilePath or filePath must be not null"
-    }
-    require(!(resourcesFilePath != null && filePath != null)) {
-        "At least one of resourcesFilePath and filePath must be null"
-    }
+/**
+ * A sealed interface representing the source of data for a check.
+ */
+sealed interface DataSource {
+    /** A data source from a remote URL. */
+    data class Remote(
+        val url: String,
+    ) : DataSource
+
+    /** A data source from a classpath resource. */
+    data class Resource(
+        val path: String,
+    ) : DataSource
+
+    /** A data source from a local file. */
+    data class File(
+        val path: String,
+    ) : DataSource
 }
 
 /**
  * Configuration for the Public Suffix List (PSL) check.
  *
  * @property enabled whether this check should be performed.
- * @property pslUrl URL to the Public Suffix List data file.
- * @property offline whether to use the bundled offline PSL data.
- * @property resourcesFilePath Path to a custom resource file to be used as a data source.
- * @property filePath Path to a custom file on the filesystem to be used as a data source.
+ * @property source The data source for the PSL data.
  */
 data class RegistrabilityConfig(
     val enabled: Boolean,
-    val pslUrl: String,
-    val offline: Boolean,
-    val resourcesFilePath: String?,
-    val filePath: String?,
-) {
-    init {
-        if (offline) {
-            validateFilePaths(resourcesFilePath, filePath)
-        }
-    }
-}
+    val source: DataSource,
+)
 
 /**
  * Builder for [RegistrabilityConfig].
@@ -63,19 +61,26 @@ class RegistrabilityConfigBuilder {
     /** Whether this check should be performed. */
     var enabled: Boolean = true
 
-    /** URL to the Public Suffix List data file. */
-    var pslUrl: String = RegistrabilityChecker.MOZILLA_PSL_URL
+    /** The data source for the PSL data. Defaults to a remote URL. */
+    var source: DataSource = DataSource.Remote(RegistrabilityChecker.MOZILLA_PSL_URL)
 
-    /** Whether to use the bundled offline PSL data. */
+    /**
+     * A convenience property to switch between the default remote and offline sources.
+     * Setting this to `true` sets the `source` to the default bundled resource file.
+     * Setting it to `false` resets the `source` to the default remote URL.
+     */
     var offline: Boolean = false
+        set(value) {
+            field = value
+            source =
+                if (value) {
+                    DataSource.Resource(RegistrabilityChecker.MOZILLA_PSL_RESOURCE_FILE)
+                } else {
+                    DataSource.Remote(RegistrabilityChecker.MOZILLA_PSL_URL)
+                }
+        }
 
-    /** Path to a custom resource file to be used as a data source. If set, `pslUrl` is ignored when `offline` is true. */
-    var resourcesFilePath: String? = RegistrabilityChecker.MOZILLA_PSL_RESOURCE_FILE
-
-    /** Path to a custom file on the filesystem to be used as a data source. If set, `pslUrl` and `resourcesFilePath` are ignored when `offline` is true. */
-    var filePath: String? = null
-
-    internal fun build() = RegistrabilityConfig(enabled, pslUrl, offline, resourcesFilePath, filePath)
+    internal fun build() = RegistrabilityConfig(enabled, source)
 }
 
 /**
@@ -103,59 +108,63 @@ class MxRecordConfigBuilder {
 }
 
 /**
- * Configuration for disposable email check.
+ * A generic configuration for dataset-based checks.
  *
  * @property enabled whether this check should be performed.
- * @property domainsListUrl URL to the disposable email domains list.
- * @property offline whether to use the bundled offline disposable email domains list.
- * @property allow a set of domains to be treated as not disposable.
- * @property deny a set of domains to be treated as disposable.
- * @property resourcesFilePath Path to a custom resource file to be used as a data source.
- * @property filePath Path to a custom file on the filesystem to be used as a data source.
+ * @property source The data source for the dataset.
+ * @property allow a set of values to be treated as valid.
+ * @property deny a set of values to be treated as invalid.
  */
-data class DisposabilityConfig(
+data class DatasetConfig(
     val enabled: Boolean,
-    val domainsListUrl: String,
-    val offline: Boolean,
+    val source: DataSource,
     val allow: Set<String>,
     val deny: Set<String>,
-    val resourcesFilePath: String?,
-    val filePath: String?,
-) {
-    init {
-        if (offline) {
-            validateFilePaths(resourcesFilePath, filePath)
-        }
-    }
-}
+)
 
 /**
- * Builder for [DisposabilityConfig].
+ * A generic builder for [DatasetConfig].
  */
-class DisposabilityConfigBuilder {
+class DatasetConfigBuilder(
+    private val defaultRemoteUrl: String,
+    private val defaultResourcePath: String,
+) {
     /** Whether this check should be performed. */
     var enabled: Boolean = true
 
-    /** URL to the disposable email domains list. */
-    var domainsListUrl: String = Constants.DISPOSABLE_EMAILS_LIST_STRICT_URL
+    /** The data source for the dataset. Defaults to a remote URL. */
+    var source: DataSource = DataSource.Remote(defaultRemoteUrl)
 
-    /** Whether to use the bundled offline disposable email domains list. */
+    /**
+     * A convenience property to switch between the default remote and offline sources.
+     * Setting this to `true` sets the `source` to the default bundled resource file.
+     * Setting it to `false` resets the `source` to the default remote URL.
+     */
     var offline: Boolean = false
+        set(value) {
+            field = value
+            source =
+                if (value) {
+                    DataSource.Resource(defaultResourcePath)
+                } else {
+                    DataSource.Remote(defaultRemoteUrl)
+                }
+        }
 
-    /** A set of domains to be treated as not disposable. */
+    /** A set of values to be treated as valid. */
     var allow: Set<String> = emptySet()
 
-    /** A set of domains to be treated as disposable. */
+    /** A set of values to be treated as invalid. */
     var deny: Set<String> = emptySet()
 
-    /** Path to a custom resource file to be used as a data source. If set, `domainsListUrl` is ignored when `offline` is true. */
-    var resourcesFilePath: String? = Constants.DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE
-
-    /** Path to a custom file on the filesystem to be used as a data source. If set, `domainsListUrl` and `resourcesFilePath` are ignored when `offline` is true. */
-    var filePath: String? = null
-
-    internal fun build() = DisposabilityConfig(enabled, domainsListUrl, offline, allow, deny, resourcesFilePath, filePath)
+    internal fun build() = DatasetConfig(enabled, source, allow, deny)
 }
+
+/** Configuration for disposable email check. */
+typealias DisposabilityConfig = DatasetConfig
+
+/** Builder for [DisposabilityConfig]. */
+typealias DisposabilityConfigBuilder = DatasetConfigBuilder
 
 /**
  * Configuration for Gravatar check.
@@ -176,115 +185,17 @@ class GravatarConfigBuilder {
     internal fun build() = GravatarConfig(enabled)
 }
 
-/**
- * Configuration for free email provider check.
- *
- * @property enabled whether this check should be performed.
- * @property domainsListUrl URL to the free email provider domains list.
- * @property offline whether to use the bundled offline free email provider domains list.
- * @property allow a set of domains to be treated as not free.
- * @property deny a set of domains to be treated as free.
- * @property resourcesFilePath Path to a custom resource file to be used as a data source.
- * @property filePath Path to a custom file on the filesystem to be used as a data source.
- */
-data class FreeConfig(
-    val enabled: Boolean,
-    val domainsListUrl: String,
-    val offline: Boolean,
-    val allow: Set<String>,
-    val deny: Set<String>,
-    val resourcesFilePath: String?,
-    val filePath: String?,
-) {
-    init {
-        if (offline) {
-            validateFilePaths(resourcesFilePath, filePath)
-        }
-    }
-}
+/** Configuration for free email provider check. */
+typealias FreeConfig = DatasetConfig
 
-/**
- * Builder for [FreeConfig].
- */
-class FreeConfigBuilder {
-    /** Whether this check should be performed. */
-    var enabled: Boolean = true
+/** Builder for [FreeConfig]. */
+typealias FreeConfigBuilder = DatasetConfigBuilder
 
-    /** URL to the free email provider domains list. */
-    var domainsListUrl: String = Constants.FREE_EMAILS_LIST_URL
+/** Configuration for role-based username check. */
+typealias RoleBasedUsernameConfig = DatasetConfig
 
-    /** Whether to use the bundled offline free email provider domains list. */
-    var offline: Boolean = false
-
-    /** A set of domains to be treated as not free. */
-    var allow: Set<String> = emptySet()
-
-    /** A set of domains to be treated as free. */
-    var deny: Set<String> = emptySet()
-
-    /** Path to a custom resource file to be used as a data source. If set, `domainsListUrl` is ignored when `offline` is true. */
-    var resourcesFilePath: String? = Constants.FREE_EMAILS_LIST_RESOURCE_FILE
-
-    /** Path to a custom file on the filesystem to be used as a data source. If set, `domainsListUrl` and `resourcesFilePath` are ignored when `offline` is true. */
-    var filePath: String? = null
-
-    internal fun build() = FreeConfig(enabled, domainsListUrl, offline, allow, deny, resourcesFilePath, filePath)
-}
-
-/**
- * Configuration for role-based username check.
- *
- * @property enabled whether this check should be performed.
- * @property usernamesListUrl URL to the role-based usernames list.
- * @property offline whether to use the bundled offline role-based usernames list.
- * @property allow a set of usernames to be treated as not role-based.
- * @property deny a set of usernames to be treated as role-based.
- * @property resourcesFilePath Path to a custom resource file to be used as a data source.
- * @property filePath Path to a custom file on the filesystem to be used as a data source.
- */
-data class RoleBasedUsernameConfig(
-    val enabled: Boolean,
-    val usernamesListUrl: String,
-    val offline: Boolean,
-    val allow: Set<String>,
-    val deny: Set<String>,
-    val resourcesFilePath: String?,
-    val filePath: String?,
-) {
-    init {
-        if (offline) {
-            validateFilePaths(resourcesFilePath, filePath)
-        }
-    }
-}
-
-/**
- * Builder for [RoleBasedUsernameConfig].
- */
-class RoleBasedUsernameConfigBuilder {
-    /** Whether this check should be performed. */
-    var enabled: Boolean = true
-
-    /** URL to the role-based usernames list. */
-    var usernamesListUrl: String = Constants.ROLE_BASED_USERNAMES_LIST_URL
-
-    /** Whether to use the bundled offline role-based usernames list. */
-    var offline: Boolean = false
-
-    /** A set of usernames to be treated as not role-based. */
-    var allow: Set<String> = emptySet()
-
-    /** A set of usernames to be treated as role-based. */
-    var deny: Set<String> = emptySet()
-
-    /** Path to a custom resource file to be used as a data source. If set, `usernamesListUrl` is ignored when `offline` is true. */
-    var resourcesFilePath: String? = Constants.ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE
-
-    /** Path to a custom file on the filesystem to be used as a data source. If set, `usernamesListUrl` and `resourcesFilePath` are ignored when `offline` is true. */
-    var filePath: String? = null
-
-    internal fun build() = RoleBasedUsernameConfig(enabled, usernamesListUrl, offline, allow, deny, resourcesFilePath, filePath)
-}
+/** Builder for [RoleBasedUsernameConfig]. */
+typealias RoleBasedUsernameConfigBuilder = DatasetConfigBuilder
 
 /**
  * Configuration for SMTP check.
@@ -341,8 +252,10 @@ class EmailVerifierDslBuilder {
     }
 
     /**
-     * If true, all checks that support offline mode will use the bundled data.
-     * This will also disable checks that do not support offline mode.
+     * A global flag to enable offline mode for all checks.
+     * When `true`, this will override individual check configurations:
+     * - It forces all dataset-based checks to use their default bundled data source.
+     * - It disables all network-dependent checks (MX, Gravatar, SMTP).
      */
     var allOffline = false
 
@@ -354,10 +267,22 @@ class EmailVerifierDslBuilder {
 
     val registrability = RegistrabilityConfigBuilder()
     val mxRecord = MxRecordConfigBuilder()
-    val disposability = DisposabilityConfigBuilder()
+    val disposability =
+        DatasetConfigBuilder(
+            Constants.DISPOSABLE_EMAILS_LIST_STRICT_URL,
+            Constants.DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE,
+        )
     val gravatar = GravatarConfigBuilder()
-    val free = FreeConfigBuilder()
-    val roleBasedUsername = RoleBasedUsernameConfigBuilder()
+    val free =
+        DatasetConfigBuilder(
+            Constants.FREE_EMAILS_LIST_URL,
+            Constants.FREE_EMAILS_LIST_RESOURCE_FILE,
+        )
+    val roleBasedUsername =
+        DatasetConfigBuilder(
+            Constants.ROLE_BASED_USERNAMES_LIST_URL,
+            Constants.ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE,
+        )
     val smtp = SmtpConfigBuilder()
 
     /**
@@ -420,6 +345,18 @@ class EmailVerifierDslBuilder {
         coroutineScope {
             logger.debug("Building EmailVerifier...")
 
+            if (allOffline) {
+                logger.debug("allOffline is true, overriding configurations...")
+                registrability.offline = true
+                disposability.offline = true
+                free.offline = true
+                roleBasedUsername.offline = true
+
+                mxRecord.enabled = false
+                gravatar.enabled = false
+                smtp.enabled = false
+            }
+
             val currentHttpClient =
                 httpClient
                     ?: HttpClient(CIO) {
@@ -432,25 +369,40 @@ class EmailVerifierDslBuilder {
                     }
             val emailSyntaxChecker = EmailSyntaxChecker()
 
-            val registrabilityConfig = registrability.build().let { if (allOffline) it.copy(offline = true) else it }
+            val registrabilityConfig = registrability.build()
             logger.debug("Registrability config: {}", registrabilityConfig)
-            val mxRecordConfig = mxRecord.build().let { if (allOffline) it.copy(enabled = false) else it }
+            val mxRecordConfig = mxRecord.build()
             logger.debug("MX record config: {}", mxRecordConfig)
-            val disposabilityConfig = disposability.build().let { if (allOffline) it.copy(offline = true) else it }
+            val disposabilityConfig = disposability.build()
             logger.debug("Disposability config: {}", disposabilityConfig)
-            val gravatarConfig = gravatar.build().let { if (allOffline) it.copy(enabled = false) else it }
+            val gravatarConfig = gravatar.build()
             logger.debug("Gravatar config: {}", gravatarConfig)
-            val freeConfig = free.build().let { if (allOffline) it.copy(offline = true) else it }
+            val freeConfig = free.build()
             logger.debug("Free email config: {}", freeConfig)
-            val roleBasedUsernameConfig = roleBasedUsername.build().let { if (allOffline) it.copy(offline = true) else it }
+            val roleBasedUsernameConfig = roleBasedUsername.build()
             logger.debug("Role-based username config: {}", roleBasedUsernameConfig)
-            val smtpConfig = smtp.build().let { if (allOffline) it.copy(enabled = false) else it }
+            val smtpConfig = smtp.build()
             logger.debug("SMTP config: {}", smtpConfig)
 
             val pslIndex = async { createPslIndex(registrabilityConfig, currentHttpClient) }
-            val disposableEmailChecker = async { createDisposableEmailChecker(disposabilityConfig, currentHttpClient) }
-            val freeChecker = async { createFreeChecker(freeConfig, currentHttpClient) }
-            val roleBasedUsernameChecker = async { createRoleBasedUsernameChecker(roleBasedUsernameConfig, currentHttpClient) }
+            val disposableEmailChecker =
+                async {
+                    createDatasetChecker(disposabilityConfig, currentHttpClient, "DisposableEmailChecker") { provider, allow, deny ->
+                        HostnameInDatasetChecker.create(provider, allow, deny)
+                    }
+                }
+            val freeChecker =
+                async {
+                    createDatasetChecker(freeConfig, currentHttpClient, "FreeChecker") { provider, allow, deny ->
+                        HostnameInDatasetChecker.create(provider, allow, deny)
+                    }
+                }
+            val roleBasedUsernameChecker =
+                async {
+                    createDatasetChecker(roleBasedUsernameConfig, currentHttpClient, "RoleBasedUsernameChecker") { provider, allow, deny ->
+                        UsernameInDatasetChecker.create(provider, allow, deny)
+                    }
+                }
             val mxRecordChecker = createMxRecordChecker(mxRecordConfig, currentHttpClient)
             val gravatarChecker = createGravatarChecker(gravatarConfig, currentHttpClient)
             val smtpChecker = createSmtpChecker(smtpConfig)
@@ -469,6 +421,40 @@ class EmailVerifierDslBuilder {
             }
         }
 
+    private fun createDomainsProvider(
+        source: DataSource,
+        httpClient: HttpClient,
+    ): DomainsProvider =
+        when (source) {
+            is DataSource.File -> FileLFDomainsProvider(source.path)
+            is DataSource.Resource -> ResourceFileLFDomainsProvider(source.path)
+            is DataSource.Remote -> OnlineLFDomainsProvider(source.url, httpClient)
+        }
+
+    /**
+     * Creates a generic dataset checker.
+     *
+     * @param config The dataset configuration.
+     * @param httpClient The HTTP client for online data fetching.
+     * @param checkerName The name of the checker for logging purposes.
+     * @param checkerFactory A factory function to create the checker.
+     * @return A checker instance or null if the check is disabled.
+     */
+    private suspend fun <T : IChecker<*, *>> createDatasetChecker(
+        config: DatasetConfig,
+        httpClient: HttpClient,
+        checkerName: String,
+        checkerFactory: suspend (provider: DomainsProvider, allow: Set<String>, deny: Set<String>) -> T,
+    ): T? =
+        if (config.enabled) {
+            logger.debug("Creating {}...", checkerName)
+            val provider = createDomainsProvider(config.source, httpClient)
+            checkerFactory(provider, config.allow, config.deny)
+        } else {
+            logger.debug("{} is disabled.", checkerName)
+            null
+        }
+
     /**
      * Creates a [RegistrabilityChecker] instance based on the provided configuration.
      *
@@ -480,104 +466,11 @@ class EmailVerifierDslBuilder {
         config: RegistrabilityConfig,
         httpClient: HttpClient,
     ) = if (config.enabled) {
-        logger.debug("Creating RegistrabilityChecker (offline: {})...", config.offline)
-        val provider =
-            if (config.offline) {
-                when {
-                    config.resourcesFilePath != null -> ResourceFileLFDomainsProvider(config.resourcesFilePath)
-                    config.filePath != null -> FileLFDomainsProvider(config.filePath)
-                    else -> throw IllegalArgumentException("At least one of resourcesFilePath and filePath must be null")
-                }
-            } else {
-                OnlineLFDomainsProvider(config.pslUrl, httpClient)
-            }
+        logger.debug("Creating RegistrabilityChecker...")
+        val provider = createDomainsProvider(config.source, httpClient)
         RegistrabilityChecker.create(provider)
     } else {
         logger.debug("RegistrabilityChecker is disabled.")
-        null
-    }
-
-    /**
-     * Creates a [HostnameInDatasetChecker] instance for disposable email checking.
-     *
-     * @param config The disposability configuration.
-     * @param httpClient The HTTP client for online data fetching.
-     * @return A [HostnameInDatasetChecker] or null if the check is disabled.
-     */
-    private suspend fun createDisposableEmailChecker(
-        config: DisposabilityConfig,
-        httpClient: HttpClient,
-    ) = if (config.enabled) {
-        logger.debug("Creating DisposableEmailChecker (offline: {})...", config.offline)
-        val provider =
-            if (config.offline) {
-                when {
-                    config.resourcesFilePath != null -> ResourceFileLFDomainsProvider(config.resourcesFilePath)
-                    config.filePath != null -> FileLFDomainsProvider(config.filePath)
-                    else -> throw IllegalArgumentException("At least one of resourcesFilePath and filePath must be null")
-                }
-            } else {
-                OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
-            }
-        HostnameInDatasetChecker.create(provider, config.allow, config.deny)
-    } else {
-        logger.debug("DisposableEmailChecker is disabled.")
-        null
-    }
-
-    /**
-     * Creates a [HostnameInDatasetChecker] instance for free email provider checking.
-     *
-     * @param config The free email check configuration.
-     * @param httpClient The HTTP client for online data fetching.
-     * @return A [HostnameInDatasetChecker] or null if the check is disabled.
-     */
-    private suspend fun createFreeChecker(
-        config: FreeConfig,
-        httpClient: HttpClient,
-    ) = if (config.enabled) {
-        logger.debug("Creating FreeChecker (offline: {})...", config.offline)
-        val provider =
-            if (config.offline) {
-                when {
-                    config.resourcesFilePath != null -> ResourceFileLFDomainsProvider(config.resourcesFilePath)
-                    config.filePath != null -> FileLFDomainsProvider(config.filePath)
-                    else -> throw IllegalArgumentException("At least one of resourcesFilePath and filePath must be null")
-                }
-            } else {
-                OnlineLFDomainsProvider(config.domainsListUrl, httpClient)
-            }
-        HostnameInDatasetChecker.create(provider, config.allow, config.deny)
-    } else {
-        logger.debug("FreeChecker is disabled.")
-        null
-    }
-
-    /**
-     * Creates a [UsernameInDatasetChecker] instance for role-based username checking.
-     *
-     * @param config The role-based username configuration.
-     * @param httpClient The HTTP client for online data fetching.
-     * @return A [UsernameInDatasetChecker] or null if the check is disabled.
-     */
-    private suspend fun createRoleBasedUsernameChecker(
-        config: RoleBasedUsernameConfig,
-        httpClient: HttpClient,
-    ) = if (config.enabled) {
-        logger.debug("Creating RoleBasedUsernameChecker (offline: {})...", config.offline)
-        val provider =
-            if (config.offline) {
-                when {
-                    config.resourcesFilePath != null -> ResourceFileLFDomainsProvider(config.resourcesFilePath)
-                    config.filePath != null -> FileLFDomainsProvider(config.filePath)
-                    else -> throw IllegalArgumentException("At least one of resourcesFilePath and filePath must be null")
-                }
-            } else {
-                OnlineLFDomainsProvider(config.usernamesListUrl, httpClient)
-            }
-        UsernameInDatasetChecker.create(provider, config.allow, config.deny)
-    } else {
-        logger.debug("RoleBasedUsernameChecker is disabled.")
         null
     }
 

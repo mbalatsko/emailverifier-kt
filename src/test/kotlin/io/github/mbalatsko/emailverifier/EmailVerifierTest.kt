@@ -1,6 +1,5 @@
 package io.github.mbalatsko.emailverifier
 
-import io.github.mbalatsko.emailverifier.components.Constants
 import io.github.mbalatsko.emailverifier.components.checkers.EmailSyntaxChecker
 import io.github.mbalatsko.emailverifier.components.checkers.HostnameInDatasetChecker
 import io.github.mbalatsko.emailverifier.components.checkers.MxRecord
@@ -13,9 +12,6 @@ import io.github.mbalatsko.emailverifier.components.core.DnsLookupBackend
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import kotlin.io.path.absolutePathString
-import kotlin.io.path.createTempFile
-import kotlin.io.path.deleteExisting
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -193,100 +189,6 @@ class EmailVerifierLocalTest {
             assertTrue(result.disposable is CheckResult.Skipped)
             assertTrue(result.free is CheckResult.Skipped)
             assertTrue(result.isLikelyDeliverable())
-        }
-
-    @Test
-    fun `throws for improper configuration - both resourcesFilePath and filePath are null`() =
-        runTest {
-            kotlin.test.assertFailsWith<IllegalArgumentException> {
-                emailVerifier {
-                    registrability {
-                        offline = true
-                        resourcesFilePath = null
-                        filePath = null
-                    }
-                }
-            }
-
-            kotlin.test.assertFailsWith<IllegalArgumentException> {
-                emailVerifier {
-                    free {
-                        offline = true
-                        resourcesFilePath = null
-                        filePath = null
-                    }
-                }
-            }
-
-            kotlin.test.assertFailsWith<IllegalArgumentException> {
-                emailVerifier {
-                    disposability {
-                        offline = true
-                        resourcesFilePath = null
-                        filePath = null
-                    }
-                }
-            }
-
-            kotlin.test.assertFailsWith<IllegalArgumentException> {
-                emailVerifier {
-                    roleBasedUsername {
-                        offline = true
-                        resourcesFilePath = null
-                        filePath = null
-                    }
-                }
-            }
-        }
-
-    @Test
-    fun `throws for improper configuration - both resourcesFilePath and filePath are set`() =
-        runTest {
-            // ensure input file exists
-            val tempFile = createTempFile(prefix = "domains", suffix = ".txt")
-
-            kotlin.test.assertFailsWith<IllegalArgumentException> {
-                emailVerifier {
-                    registrability {
-                        offline = true
-                        resourcesFilePath = RegistrabilityChecker.MOZILLA_PSL_RESOURCE_FILE
-                        filePath = tempFile.absolutePathString()
-                    }
-                }
-            }
-
-            kotlin.test.assertFailsWith<IllegalArgumentException> {
-                emailVerifier {
-                    free {
-                        offline = true
-                        resourcesFilePath = Constants.FREE_EMAILS_LIST_RESOURCE_FILE
-                        filePath = tempFile.absolutePathString()
-                    }
-                }
-            }
-
-            kotlin.test.assertFailsWith<IllegalArgumentException> {
-                emailVerifier {
-                    disposability {
-                        offline = true
-                        resourcesFilePath = Constants.DISPOSABLE_EMAILS_LIST_STRICT_RESOURCE_FILE
-                        filePath = tempFile.absolutePathString()
-                    }
-                }
-            }
-
-            kotlin.test.assertFailsWith<IllegalArgumentException> {
-                emailVerifier {
-                    roleBasedUsername {
-                        offline = true
-                        resourcesFilePath = Constants.ROLE_BASED_USERNAMES_LIST_RESOURCE_FILE
-                        filePath = tempFile.absolutePathString()
-                    }
-                }
-            }
-
-            // cleanup
-            tempFile.deleteExisting()
         }
 }
 
