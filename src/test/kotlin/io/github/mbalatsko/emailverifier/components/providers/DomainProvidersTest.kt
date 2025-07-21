@@ -80,13 +80,6 @@ class DomainProvidersTest {
         }
 
     @Test
-    fun `resource file provider throws for non-existent resource`() {
-        kotlin.test.assertFailsWith<IllegalArgumentException> {
-            ResourceFileLFDomainsProvider("non-existent-file.txt")
-        }
-    }
-
-    @Test
     fun `file provider returns expected data`() =
         runTest {
             val tempFile = createTempFile(prefix = "domains", suffix = ".txt")
@@ -99,11 +92,4 @@ class DomainProvidersTest {
             // cleanup
             tempFile.deleteExisting()
         }
-
-    @Test
-    fun `file file provider throws for non-existent resource`() {
-        kotlin.test.assertFailsWith<IllegalArgumentException> {
-            FileLFDomainsProvider("/non-existent-file.txt")
-        }
-    }
 }

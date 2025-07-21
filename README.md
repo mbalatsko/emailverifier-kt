@@ -250,49 +250,28 @@ if (result.isLikelyDeliverable()) {
 }
 ```
 
-### 3. Custom configuration
+### 3. Customizing Checks
+
+All checks are enabled by default, but you can easily disable or configure them.
 
 ```kotlin
 val verifier = emailVerifier {
-    // All checks are enabled by default unless specified otherwise.
-
-    registrability {
-        enabled = true // Explicitly enable (default is true)
-        pslUrl  = "https://my.custom.domain/public_suffix_list.dat" // Custom PSL URL
-    }
+    // Disable a check
     mxRecord {
-        enabled = false // Disable MX record checks
-        // dohServerEndpoint = "https://my.custom.doh/dns-query" // Custom DoH endpoint if enabled
+        enabled = false
     }
+
+    // Configure allow/deny lists for dataset checks
     disposability {
-        enabled = true // Explicitly enable (default is true)
-        domainsListUrl = "https://my.custom.domain/disposable_domains.txt" // Custom disposable domains list
         allow = setOf("my-disposable-domain.com") // Whitelist a disposable domain
-        deny = setOf("my-domain.com") // Blacklist a domain
+        deny = setOf("my-domain.com")             // Blacklist a domain
     }
-    gravatar {
-        enabled = true // Explicitly enable (default is true)
-    }
-    free {
-        enabled = false // Disable free email provider checks
-        // domainsListUrl = "https://my.custom.domain/free_emails.txt" // Custom free emails list if enabled
-        allow = setOf("gmail.com") // Whitelist a free email provider
-        deny = setOf("my-free-domain.com") // Blacklist a domain
-    }
-    roleBasedUsername {
-        enabled = true // Explicitly enable (default is true)
-        usernamesListUrl = "https://my.custom.domain/role_based_usernames.txt" // Custom role-based usernames list
-        allow = setOf("admin") // Whitelist a role-based username
-        deny = setOf("my-username") // Blacklist a username
-    }
+
+    // Configure SMTP parameters
     smtp {
         enabled = true // IMPORTANT: Disabled by default. See notes below.
-        enableAllCatchCheck = true // Check if the server has a catch-all policy.
-        timeoutMillis = 500 // Connection timeout.
-        maxRetries = 2 // Retries for SMTP commands.
+        timeoutMillis = 10000 // Increase connection timeout
     }
-    // You can also provide a custom HttpClient for all network operations:
-    // httpClient = customHttpClient
 }
 ```
 
@@ -315,10 +294,13 @@ val verifier = emailVerifier {
 > }
 > ```
 
-### 4. Offline Mode
+### 4. Configuring Data Sources
 
-To enable offline mode for all checks, set the `allOffline` property to `true`. This will use bundled data for all 
-supported checks and disable network-dependent checks.
+For checks that rely on external datasets (Registrability, Disposability, Free Email, and Role-Based Username), you have full control over the data source.
+
+#### Global Offline Mode
+
+For ultimate convenience, you can set the global `allOffline` flag. This forces all checks to use their bundled offline data and disables checks that require a network connection (MX, Gravatar, SMTP). This is the simplest way to configure the verifier for an environment with no internet access.
 
 ```kotlin
 val verifier = emailVerifier {
@@ -331,57 +313,54 @@ val result = verifier.verify("mbalatsko@gmail.com")
 // result.smtp will be SKIPPED
 ```
 
-You can also configure offline mode for each check individually. When `offline` is set to `true` for a specific check, the verifier will use the bundled data by default. You can override this by providing a custom data source (see [Using Custom Data Sources](#5-using-custom-data-sources)).
+#### Per-Check Configuration
+
+You can also configure the data source for each check individually.
+
+##### Using Default Offline Data
+
+The `offline` property provides a simple toggle between the default remote URL and the default bundled data source for a specific check.
 
 ```kotlin
 val verifier = emailVerifier {
+    // Use the bundled offline data for this check
     registrability {
-        offline = true // Use bundled offline data for this check
-    }
-    disposability {
         offline = true
     }
-    // MX and Gravatar checks will still run unless disabled
-}
-```
 
-### 5. Using Custom Data Sources
-
-For checks that rely on external datasets (Registrability, Disposability, Free Email, and Role-Based Username), you can override the default data sources by providing your own files. This is useful for testing, working with proprietary lists, or when you need to manage datasets locally.
-
-You can provide a file from your project's **resources** or from the local **filesystem**.
-
-#### From Classpath Resources
-
-Place your data file (e.g., `my_disposable_domains.txt`) in your project's `src/main/resources` directory. Then, configure the verifier to use it by setting the `resourcesFilePath` property.
-
-```kotlin
-val verifier = emailVerifier {
+    // Use the online source for this one (default behavior)
     disposability {
-        offline = true // Required when using custom file-based sources
-        resourcesFilePath = "/my_disposable_domains.txt"
-    }
-    // You can do the same for registrability, free, and roleBasedUsername checks
-}
-```
-
-#### From the Filesystem
-
-You can also load a data file from any path on the local filesystem using the `filePath` property.
-
-```kotlin
-val verifier = emailVerifier {
-    disposability {
-        offline = true // Required when using custom file-based sources
-        filePath = "/path/to/your/disposable_domains.txt"
+        offline = false
     }
 }
 ```
 
-> **Note:** When using `resourcesFilePath` or `filePath`, you must set `offline = true` for that specific check. This tells the verifier to use local data providers instead of fetching data from the network. Note that `resourcesFilePath` and `filePath` cannot be set at the same time.
+##### Using a Custom Data Source
 
+For complete control, you can provide a custom data source using the `source` property. This is ideal for using proprietary lists, testing, or managing datasets locally. The `DataSource` type ensures your configuration is clear and type-safe.
 
-### 6. Advanced Configuration: Custom HttpClient
+```kotlin
+import io.github.mbalatsko.emailverifier.DataSource
+
+val verifier = emailVerifier {
+    // Use a custom remote URL
+    registrability {
+        source = DataSource.Remote("https://my.custom.domain/public_suffix_list.dat")
+    }
+
+    // Use a custom file from your classpath resources
+    disposability {
+        source = DataSource.Resource("/my_disposable_domains.txt")
+    }
+
+    // Use a custom file from the local filesystem
+    free {
+        source = DataSource.File("/path/to/your/free_emails.txt")
+    }
+}
+```
+
+### 5. Advanced Configuration: Custom HttpClient
 
 The default `HttpClient` used by `EmailVerifier` is configured with a sensible retry policy (`retryOnServerErrors(maxRetries = 3)` with exponential backoff) to handle transient network issues.
 
