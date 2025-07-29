@@ -2,6 +2,8 @@ package io.github.mbalatsko.emailverifier.components.checkers
 
 import io.github.mbalatsko.emailverifier.components.core.EmailParts
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
 
 /**
@@ -37,19 +39,23 @@ abstract class BaseInDatasetChecker(
     private val domainsProvider: DomainsProvider,
     protected val allowSet: Set<String>,
     protected val denySet: Set<String>,
-) : IChecker<DatasetData, Unit> {
+) : IChecker<DatasetData, Unit>,
+    Refreshable {
     /**
      * The set of data loaded from the [domainsProvider].
      */
     protected var dataSet: Set<String> = emptySet()
 
+    protected val mutex = Mutex()
+
     /**
      * Loads the data from the [domainsProvider].
      */
-    suspend fun loadData() {
-        dataSet = domainsProvider.provide()
-        logger.debug("Loaded {} entries from {}", dataSet.size, domainsProvider::class.java.simpleName)
-    }
+    override suspend fun refresh() =
+        mutex.withLock {
+            dataSet = domainsProvider.provide()
+            logger.debug("Loaded {} entries from {}", dataSet.size, domainsProvider::class.java.simpleName)
+        }
 
     companion object {
         private val logger = LoggerFactory.getLogger(BaseInDatasetChecker::class.java)
@@ -97,7 +103,10 @@ class HostnameInDatasetChecker private constructor(
             )
         }
 
-        val matchedCandidate = candidates.firstOrNull { it in dataSet }
+        val matchedCandidate =
+            mutex.withLock {
+                candidates.firstOrNull { it in dataSet }
+            }
         logger.trace("Hostname matched in dataset: {}", matchedCandidate)
         return DatasetData(
             match = matchedCandidate != null,
@@ -124,7 +133,7 @@ class HostnameInDatasetChecker private constructor(
         ): HostnameInDatasetChecker {
             logger.debug("Creating HostnameInDatasetChecker...")
             val hostnameInDatasetChecker = HostnameInDatasetChecker(domainsProvider, allowSet, denySet)
-            hostnameInDatasetChecker.loadData()
+            hostnameInDatasetChecker.refresh()
             logger.debug("HostnameInDatasetChecker created.")
             return hostnameInDatasetChecker
         }
@@ -161,7 +170,7 @@ class UsernameInDatasetChecker private constructor(
             )
         }
 
-        val match = email.username in dataSet
+        val match = mutex.withLock { email.username in dataSet }
         logger.trace("Username matched in dataset: {}", match)
         return DatasetData(
             match = match,
@@ -188,7 +197,7 @@ class UsernameInDatasetChecker private constructor(
         ): UsernameInDatasetChecker {
             logger.debug("Creating UsernameInDatasetChecker...")
             val usernameInDatasetChecker = UsernameInDatasetChecker(domainsProvider, allowSet, denySet)
-            usernameInDatasetChecker.loadData()
+            usernameInDatasetChecker.refresh()
             logger.debug("UsernameInDatasetChecker created.")
             return usernameInDatasetChecker
         }

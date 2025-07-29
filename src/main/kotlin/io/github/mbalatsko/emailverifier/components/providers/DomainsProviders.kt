@@ -1,5 +1,6 @@
 package io.github.mbalatsko.emailverifier.components.providers
 
+import io.github.mbalatsko.emailverifier.components.core.ConnectionError
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -65,19 +66,13 @@ class OnlineLFDomainsProvider(
      */
     override suspend fun obtainData(): String {
         logger.debug("Fetching domains from URL: {}", url)
-        return try {
-            val response = httpClient.get(url)
-            if (response.status.value >= 400) {
-                logger.warn("Failed to fetch domains from {}: HTTP status {}", url, response.status)
-                ""
-            } else {
-                val data = response.bodyAsText()
-                logger.debug("Successfully fetched {} bytes from {}", data.length, url)
-                data
-            }
-        } catch (e: Exception) {
-            logger.error("Error fetching domains from {}", url, e)
-            ""
+        val response = httpClient.get(url)
+        if (response.status.value >= 400) {
+            throw ConnectionError("Failed to fetch domains from $url: HTTP status ${response.status}")
+        } else {
+            val data = response.bodyAsText()
+            logger.debug("Successfully fetched {} bytes from {}", data.length, url)
+            return data
         }
     }
 

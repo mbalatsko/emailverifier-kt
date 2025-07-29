@@ -3,6 +3,8 @@ package io.github.mbalatsko.emailverifier.components.checkers
 import io.github.mbalatsko.emailverifier.components.Constants
 import io.github.mbalatsko.emailverifier.components.core.EmailParts
 import io.github.mbalatsko.emailverifier.components.providers.DomainsProvider
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
 
 /**
@@ -22,7 +24,8 @@ data class RegistrabilityData(
  */
 class RegistrabilityChecker(
     val domainsProvider: DomainsProvider,
-) : IChecker<RegistrabilityData, Unit> {
+) : IChecker<RegistrabilityData, Unit>,
+    Refreshable {
     /**
      * Internal node structure for PSL trie.
      *
@@ -39,17 +42,22 @@ class RegistrabilityChecker(
     )
 
     private var root = Node()
+    private val mutex = Mutex()
 
     /**
      * Rebuilds the PSL index by fetching and parsing rules from [domainsProvider].
      * Must be called before using [check].
      */
-    suspend fun build() {
+    override suspend fun refresh() {
         logger.debug("Building PSL index from {}...", domainsProvider::class.java.simpleName)
-        root = Node()
+        val newRoot = Node()
         val rules = domainsProvider.provide()
-        rules.forEach { add(it) }
+        rules.forEach { addToNode(newRoot, it) }
         logger.debug("PSL index built with {} rules.", rules.size)
+
+        mutex.withLock {
+            root = newRoot
+        }
     }
 
     /**
@@ -59,7 +67,10 @@ class RegistrabilityChecker(
      *
      * @param rule a single line from the PSL data source.
      */
-    fun add(rule: String) {
+    private fun addToNode(
+        node: Node,
+        rule: String,
+    ) {
         var exception = false
         var wildcard = false
         var ruleStr = rule.trim().lowercase()
@@ -68,21 +79,21 @@ class RegistrabilityChecker(
             ruleStr = ruleStr.substring(1)
         }
         val labels = ruleStr.split(".").reversed()
-        var node = root
+        var currNode = node
         for (label in labels) {
             if (label == "*") {
                 wildcard = true
                 continue
             }
-            node = node.children.getOrPut(label) { Node() }
+            currNode = currNode.children.getOrPut(label) { Node() }
         }
         if (wildcard) {
-            node.children["*"] = Node(isSuffix = true, isWildcard = true)
+            currNode.children["*"] = Node(isSuffix = true, isWildcard = true)
         } else {
-            node.isSuffix = true
+            currNode.isSuffix = true
         }
         if (exception) {
-            node.isException = true
+            currNode.isException = true
         }
     }
 
@@ -96,37 +107,38 @@ class RegistrabilityChecker(
      * @return the registrable domain as a string, or null if the hostname itself is a public suffix
      *   or cannot be determined (e.g., a TLD).
      */
-    private fun findRegistrableDomain(hostname: String): String? {
-        val labels =
-            hostname
-                .split(".")
-                .reversed()
-        if (labels.size <= 1) {
-            logger.trace("Hostname {} is a TLD, not registrable.", hostname)
-            return null // TLDs are not registrable
-        }
-
-        var node = root
-
-        var matchLen: Int? = null
-        var eTld: String? = null
-        for ((i, label) in labels.withIndex()) {
-            val next = node.children[label] ?: node.children["*"]
-            eTld = if (eTld != null) "$label.$eTld" else label
-            if (next == null) break
-            node = next
-
-            if (node.isException) {
-                logger.trace("Found exception rule for {}, registrable domain is {}.", hostname, eTld)
-                return eTld
-            } else if (node.isSuffix || node.isWildcard) {
-                matchLen = i + 1
+    private suspend fun findRegistrableDomain(hostname: String): String? =
+        mutex.withLock {
+            val labels =
+                hostname
+                    .split(".")
+                    .reversed()
+            if (labels.size <= 1) {
+                logger.trace("Hostname {} is a TLD, not registrable.", hostname)
+                return null // TLDs are not registrable
             }
+
+            var node = root
+
+            var matchLen: Int? = null
+            var eTld: String? = null
+            for ((i, label) in labels.withIndex()) {
+                val next = node.children[label] ?: node.children["*"]
+                eTld = if (eTld != null) "$label.$eTld" else label
+                if (next == null) break
+                node = next
+
+                if (node.isException) {
+                    logger.trace("Found exception rule for {}, registrable domain is {}.", hostname, eTld)
+                    return eTld
+                } else if (node.isSuffix || node.isWildcard) {
+                    matchLen = i + 1
+                }
+            }
+            val registrableDomain = if (matchLen != null && labels.size > matchLen) eTld else null
+            logger.trace("For hostname {}, found registrable domain: {}", hostname, registrableDomain)
+            return registrableDomain
         }
-        val registrableDomain = if (matchLen != null && labels.size > matchLen) eTld else null
-        logger.trace("For hostname {}, found registrable domain: {}", hostname, registrableDomain)
-        return registrableDomain
-    }
 
     /**
      * Checks the registrability of the email's hostname.
@@ -160,7 +172,7 @@ class RegistrabilityChecker(
         suspend fun create(domainsProvider: DomainsProvider): RegistrabilityChecker {
             logger.debug("Creating RegistrabilityChecker...")
             val index = RegistrabilityChecker(domainsProvider)
-            index.build()
+            index.refresh()
             logger.debug("RegistrabilityChecker created.")
             return index
         }

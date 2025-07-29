@@ -21,3 +21,15 @@ interface IChecker<out Output, in Context> {
         context: Context,
     ): Output
 }
+
+/**
+ * An interface for components that can have their data refreshed at runtime.
+ * This is useful for long-running applications that need to keep their data up-to-date.
+ */
+interface Refreshable {
+    /**
+     * Refreshes the data from the underlying data source.
+     * This operation is expected to be thread-safe.
+     */
+    suspend fun refresh()
+}
