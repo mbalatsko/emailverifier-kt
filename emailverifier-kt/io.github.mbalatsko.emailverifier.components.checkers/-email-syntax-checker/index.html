@@ -46,7 +46,7 @@
         </button>
         <div class="navigation-controls--break ui-kit_mobile-only"></div>
         <div class="library-version" id="library-version">
-0.4        </div>
+1.0.0        </div>
         <div class="navigation-controls">
         <div class="filter-section filter-section_loading" id="filter-section">
                 <button class="platform-tag platform-selector jvm-like" data-active=""
@@ -108,7 +108,7 @@
   <div class="breadcrumbs"><a href="../../../index.html">emailverifier-kt</a><span class="delimiter">/</span><a href="../index.html">io.github.mbalatsko.emailverifier.components.checkers</a><span class="delimiter">/</span><span class="current">EmailSyntaxChecker</span></div>
   <div class="cover ">
     <h1 class="cover"><span>Email</span><wbr></wbr><span>Syntax</span><wbr></wbr><span><span>Checker</span></span></h1>
-    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">class </span><a href="index.html">EmailSyntaxChecker</a></div><p class="paragraph">Performs syntax validation on components of an email address.</p><p class="paragraph">Validates username (local-part), optional plus-tag extensions, and domain hostname according to a subset of RFC 5322 and IDN rules.</p></div></div>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">class </span><a href="index.html">EmailSyntaxChecker</a> : <a href="../-i-checker/index.html">IChecker</a><span class="token operator">&lt;</span><a href="../-syntax-validation-data/index.html">SyntaxValidationData</a><span class="token punctuation">, </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a><span class="token operator">&gt; </span></div><p class="paragraph">Performs syntax validation on components of an email address.</p><p class="paragraph">Validates username (local-part), optional plus-tag extensions, and domain hostname according to a subset of RFC 5322 and IDN rules.</p></div></div>
   </div>
   <div class="tabbedcontent">
     <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
@@ -153,7 +153,22 @@
       </div>
       <div data-togglable="FUNCTION">
         <h2 class="">Functions</h2>
-        <div class="table"><a data-name="1052536911%2FFunctions%2F769193423" anchor-label="isHostnameValid" id="1052536911%2FFunctions%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+        <div class="table"><a data-name="-42052454%2FFunctions%2F769193423" anchor-label="check" id="-42052454%2FFunctions%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+          <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="check.html"><span><span>check</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-42052454%2FFunctions%2F769193423"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">open </span><span class="token keyword">suspend override </span><span class="token keyword">fun </span><a href="check.html"><span class="token function">check</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">email<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-email-parts/index.html">EmailParts</a><span class="token punctuation">, </span></span><span class="parameter ">context<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-unit/index.html">Unit</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-syntax-validation-data/index.html">SyntaxValidationData</a></div><div class="brief "><p class="paragraph">Performs the validation check.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="1052536911%2FFunctions%2F769193423" anchor-label="isHostnameValid" id="1052536911%2FFunctions%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
           <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
@@ -194,21 +209,6 @@
               <div>
                 <div class="title">
                   <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="is-username-valid.html"><span class="token function">isUsernameValid</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">username<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a></div><div class="brief "><p class="paragraph">Checks whether the provided username (local-part of email) is syntactically valid.</p></div></div></div>
-                </div>
-              </div>
-            </div>
-          </div>
-<a data-name="233158535%2FFunctions%2F769193423" anchor-label="parseEmailParts" id="233158535%2FFunctions%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
-          <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
-            <div class="main-subrow keyValue ">
-              <div class=""><span class="inline-flex">
-                  <div><a href="parse-email-parts.html"><span>parse</span><wbr></wbr><span>Email</span><wbr></wbr><span><span>Parts</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="233158535%2FFunctions%2F769193423"></span>
-                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
-                  </span></span></div>
-              <div>
-                <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="parse-email-parts.html"><span class="token function">parseEmailParts</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">email<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../-email-parts/index.html">EmailParts</a></div><div class="brief "><p class="paragraph">Parses an email address into its logical parts.</p></div></div></div>
                 </div>
               </div>
             </div>

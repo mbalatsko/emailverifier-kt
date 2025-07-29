@@ -46,7 +46,7 @@
         </button>
         <div class="navigation-controls--break ui-kit_mobile-only"></div>
         <div class="library-version" id="library-version">
-0.4        </div>
+1.0.0        </div>
         <div class="navigation-controls">
         <div class="filter-section filter-section_loading" id="filter-section">
                 <button class="platform-tag platform-selector jvm-like" data-active=""
@@ -108,24 +108,24 @@
   <div class="breadcrumbs"><a href="../../../index.html">emailverifier-kt</a><span class="delimiter">/</span><a href="../index.html">io.github.mbalatsko.emailverifier</a><span class="delimiter">/</span><span class="current">EmailValidationResult</span></div>
   <div class="cover ">
     <h1 class="cover"><span>Email</span><wbr></wbr><span>Validation</span><wbr></wbr><span><span>Result</span></span></h1>
-    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">data </span><span class="token keyword">class </span><a href="index.html">EmailValidationResult</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">val </span>email<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>syntaxCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>registrabilityCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>mxRecordCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>disposabilityCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>gravatarCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>freeCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>roleBasedUsernameCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED</span></span><span class="token punctuation">)</span></div><p class="paragraph">Aggregated result of a full email validation process.</p></div></div>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">data </span><span class="token keyword">class </span><a href="index.html">EmailValidationResult</a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span class="token keyword">val </span>email<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>emailParts<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-email-parts/index.html">EmailParts</a><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>syntax<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-syntax-validation-data/index.html">SyntaxValidationData</a><span class="token operator">&gt;</span><span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>registrability<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-registrability-data/index.html">RegistrabilityData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>mx<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-mx-record-data/index.html">MxRecordData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>disposable<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-dataset-data/index.html">DatasetData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>gravatar<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-gravatar-data/index.html">GravatarData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>free<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-dataset-data/index.html">DatasetData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>roleBasedUsername<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-dataset-data/index.html">DatasetData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter "><span class="token keyword">val </span>smtp<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-smtp-data/index.html">SmtpData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped</span></span><span class="token punctuation">)</span></div><p class="paragraph">Aggregated result of a full email validation process.</p></div></div>
   </div>
   <div class="tabbedcontent">
     <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
     <div class="tabs-section-body">
       <div data-togglable="CONSTRUCTOR">
         <h2 class="">Constructors</h2>
-        <div class="table"><a data-name="-1531745853%2FConstructors%2F769193423" anchor-label="EmailValidationResult" id="-1531745853%2FConstructors%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+        <div class="table"><a data-name="-1914768047%2FConstructors%2F769193423" anchor-label="EmailValidationResult" id="-1914768047%2FConstructors%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
           <div class="table-row" data-togglable="CONSTRUCTOR" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
                   <div><a href="-email-validation-result.html"><span>Email</span><wbr></wbr><span>Validation</span><wbr></wbr><span><span>Result</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1531745853%2FConstructors%2F769193423"></span>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1914768047%2FConstructors%2F769193423"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">email<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">syntaxCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token punctuation">, </span></span><span class="parameter ">registrabilityCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED<span class="token punctuation">, </span></span><span class="parameter ">mxRecordCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED<span class="token punctuation">, </span></span><span class="parameter ">disposabilityCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED<span class="token punctuation">, </span></span><span class="parameter ">gravatarCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED<span class="token punctuation">, </span></span><span class="parameter ">freeCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED<span class="token punctuation">, </span></span><span class="parameter ">roleBasedUsernameCheck<span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a><span class="token operator"> = </span>CheckResult.SKIPPED</span></span><span class="token punctuation">)</span></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">email<span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">emailParts<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-email-parts/index.html">EmailParts</a><span class="token punctuation">, </span></span><span class="parameter ">syntax<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-syntax-validation-data/index.html">SyntaxValidationData</a><span class="token operator">&gt;</span><span class="token punctuation">, </span></span><span class="parameter ">registrability<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-registrability-data/index.html">RegistrabilityData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter ">mx<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-mx-record-data/index.html">MxRecordData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter ">disposable<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-dataset-data/index.html">DatasetData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter ">gravatar<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-gravatar-data/index.html">GravatarData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter ">free<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-dataset-data/index.html">DatasetData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter ">roleBasedUsername<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-dataset-data/index.html">DatasetData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped<span class="token punctuation">, </span></span><span class="parameter ">smtp<span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-smtp-data/index.html">SmtpData</a><span class="token operator">&gt;</span><span class="token operator"> = </span>CheckResult.Skipped</span></span><span class="token punctuation">)</span></div></div></div>
                 </div>
               </div>
             </div>
@@ -134,17 +134,17 @@
       </div>
       <div data-togglable="PROPERTY">
         <h2 class="">Properties</h2>
-        <div class="table"><a data-name="-1144014350%2FProperties%2F769193423" anchor-label="disposabilityCheck" id="-1144014350%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+        <div class="table"><a data-name="656503062%2FProperties%2F769193423" anchor-label="disposable" id="656503062%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
           <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
-                  <div><a href="disposability-check.html"><span>disposability</span><wbr></wbr><span><span>Check</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1144014350%2FProperties%2F769193423"></span>
+                  <div><a href="disposable.html"><span><span>disposable</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="656503062%2FProperties%2F769193423"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="disposability-check.html">disposabilityCheck</a><span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a></div><div class="brief "><p class="paragraph">result of disposable domain detection.</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="disposable.html">disposable</a><span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-dataset-data/index.html">DatasetData</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">result of disposable domain detection.</p></div></div></div>
                 </div>
               </div>
             </div>
@@ -164,92 +164,122 @@
               </div>
             </div>
           </div>
-<a data-name="-1683719320%2FProperties%2F769193423" anchor-label="freeCheck" id="-1683719320%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+<a data-name="-1960705454%2FProperties%2F769193423" anchor-label="emailParts" id="-1960705454%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
           <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
-                  <div><a href="free-check.html"><span>free</span><wbr></wbr><span><span>Check</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1683719320%2FProperties%2F769193423"></span>
+                  <div><a href="email-parts.html"><span>email</span><wbr></wbr><span><span>Parts</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1960705454%2FProperties%2F769193423"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="free-check.html">freeCheck</a><span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a></div><div class="brief "><p class="paragraph">result of check against list of known free‐email provider, <code class="lang-kotlin">PASSED</code> if email hostname is not a known free‐email provider</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="email-parts.html">emailParts</a><span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-email-parts/index.html">EmailParts</a></div><div class="brief "><p class="paragraph">the decomposed parts of the email address.</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-497102464%2FProperties%2F769193423" anchor-label="gravatarCheck" id="-497102464%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+<a data-name="1588198474%2FProperties%2F769193423" anchor-label="free" id="1588198474%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
           <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
-                  <div><a href="gravatar-check.html"><span>gravatar</span><wbr></wbr><span><span>Check</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-497102464%2FProperties%2F769193423"></span>
+                  <div><a href="free.html"><span><span>free</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1588198474%2FProperties%2F769193423"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="gravatar-check.html">gravatarCheck</a><span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a></div><div class="brief "><p class="paragraph">result of gravatar presence check, <code class="lang-kotlin">FAILED</code> if gravatar is not present</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="free.html">free</a><span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-dataset-data/index.html">DatasetData</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">result of check against list of known free‐email providers.</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-408514728%2FProperties%2F769193423" anchor-label="mxRecordCheck" id="-408514728%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+<a data-name="195573554%2FProperties%2F769193423" anchor-label="gravatar" id="195573554%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
           <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
-                  <div><a href="mx-record-check.html"><span>mx</span><wbr></wbr><span>Record</span><wbr></wbr><span><span>Check</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-408514728%2FProperties%2F769193423"></span>
+                  <div><a href="gravatar.html"><span><span>gravatar</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="195573554%2FProperties%2F769193423"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="mx-record-check.html">mxRecordCheck</a><span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a></div><div class="brief "><p class="paragraph">result of MX record existence check.</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="gravatar.html">gravatar</a><span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-gravatar-data/index.html">GravatarData</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">result of gravatar presence check.</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-1629449558%2FProperties%2F769193423" anchor-label="registrabilityCheck" id="-1629449558%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+<a data-name="825517099%2FProperties%2F769193423" anchor-label="mx" id="825517099%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
           <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
-                  <div><a href="registrability-check.html"><span>registrability</span><wbr></wbr><span><span>Check</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1629449558%2FProperties%2F769193423"></span>
+                  <div><a href="mx.html"><span><span>mx</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="825517099%2FProperties%2F769193423"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="registrability-check.html">registrabilityCheck</a><span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a></div><div class="brief "><p class="paragraph">result of public suffix (PSL) registrability validation.</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="mx.html">mx</a><span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-mx-record-data/index.html">MxRecordData</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">result of MX record existence check.</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-754180447%2FProperties%2F769193423" anchor-label="roleBasedUsernameCheck" id="-754180447%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+<a data-name="-257367096%2FProperties%2F769193423" anchor-label="registrability" id="-257367096%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
           <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
-                  <div><a href="role-based-username-check.html"><span>role</span><wbr></wbr><span>Based</span><wbr></wbr><span>Username</span><wbr></wbr><span><span>Check</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-754180447%2FProperties%2F769193423"></span>
+                  <div><a href="registrability.html"><span><span>registrability</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-257367096%2FProperties%2F769193423"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="role-based-username-check.html">roleBasedUsernameCheck</a><span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a></div><div class="brief "><p class="paragraph">result of check against list of role-based usernames, <code class="lang-kotlin">PASSED</code> if email username is not a role-based username</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="registrability.html">registrability</a><span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-registrability-data/index.html">RegistrabilityData</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">result of public suffix (PSL) registrability validation.</p></div></div></div>
                 </div>
               </div>
             </div>
           </div>
-<a data-name="-540018465%2FProperties%2F769193423" anchor-label="syntaxCheck" id="-540018465%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+<a data-name="-562726543%2FProperties%2F769193423" anchor-label="roleBasedUsername" id="-562726543%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
           <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
-                  <div><a href="syntax-check.html"><span>syntax</span><wbr></wbr><span><span>Check</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-540018465%2FProperties%2F769193423"></span>
+                  <div><a href="role-based-username.html"><span>role</span><wbr></wbr><span>Based</span><wbr></wbr><span><span>Username</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-562726543%2FProperties%2F769193423"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="syntax-check.html">syntaxCheck</a><span class="token operator">: </span><a href="../-check-result/index.html">CheckResult</a></div><div class="brief "><p class="paragraph">result of syntax validation.</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="role-based-username.html">roleBasedUsername</a><span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-dataset-data/index.html">DatasetData</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">result of check against list of role-based usernames.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="867827616%2FProperties%2F769193423" anchor-label="smtp" id="867827616%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+          <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="smtp.html"><span><span>smtp</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="867827616%2FProperties%2F769193423"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="smtp.html">smtp</a><span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-smtp-data/index.html">SmtpData</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">result of SMTP check.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1381650317%2FProperties%2F769193423" anchor-label="syntax" id="-1381650317%2FProperties%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+          <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="syntax.html"><span><span>syntax</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1381650317%2FProperties%2F769193423"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">val </span><a href="syntax.html">syntax</a><span class="token operator">: </span><a href="../../io.github.mbalatsko.emailverifier.components.core/-check-result/index.html">CheckResult</a><span class="token operator">&lt;</span><a href="../../io.github.mbalatsko.emailverifier.components.checkers/-syntax-validation-data/index.html">SyntaxValidationData</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">result of syntax validation.</p></div></div></div>
                 </div>
               </div>
             </div>
@@ -258,17 +288,17 @@
       </div>
       <div data-togglable="FUNCTION">
         <h2 class="">Functions</h2>
-        <div class="table"><a data-name="-1949479654%2FFunctions%2F769193423" anchor-label="ok" id="-1949479654%2FFunctions%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
+        <div class="table"><a data-name="-293697453%2FFunctions%2F769193423" anchor-label="isLikelyDeliverable" id="-293697453%2FFunctions%2F769193423" data-filterable-set=":dokkaHtml/main"></a>
           <div class="table-row" data-filterable-current=":dokkaHtml/main" data-filterable-set=":dokkaHtml/main">
             <div class="main-subrow keyValue ">
               <div class=""><span class="inline-flex">
-                  <div><a href="ok.html"><span><span>ok</span></span></a></div>
-<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1949479654%2FFunctions%2F769193423"></span>
+                  <div><a href="is-likely-deliverable.html"><span>is</span><wbr></wbr><span>Likely</span><wbr></wbr><span><span>Deliverable</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-293697453%2FFunctions%2F769193423"></span>
                     <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
                   </span></span></div>
               <div>
                 <div class="title">
-                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="ok.html"><span class="token function">ok</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a></div><div class="brief "><p class="paragraph">Returns true if all strong indicator checks either passed or were skipped. Strong indicator checks: syntax, registrability, mx record presence, disposability Note: mx record presence might return ERRORED, which is not validated</p></div></div></div>
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":dokkaHtml/main"><div class="symbol monospace"><span class="token keyword">fun </span><a href="is-likely-deliverable.html"><span class="token function">isLikelyDeliverable</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a></div><div class="brief "><p class="paragraph">Returns true if all strong indicator checks passed. Strong indicator checks are: syntax, registrability, mx record presence, and disposability. These checks are the most likely to indicate that an email address is not valid.</p></div></div></div>
                 </div>
               </div>
             </div>
