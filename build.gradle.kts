@@ -130,6 +130,20 @@ jreleaser {
     checksum {
         individual = true
     }
+
+    release {
+        github {
+            changelog {
+                setFormatted("ALWAYS")
+                preset = "conventional-commits"
+                format = "- {{commitShortHash}} {{commitTitle}}"
+
+                contributors {
+                    enabled = false
+                }
+            }
+        }
+    }
 }
 
 tasks.withType<Test> {
