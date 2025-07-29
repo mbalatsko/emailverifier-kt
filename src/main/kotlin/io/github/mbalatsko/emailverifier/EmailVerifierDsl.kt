@@ -48,10 +48,12 @@ sealed interface DataSource {
  *
  * @property enabled whether this check should be performed.
  * @property source The data source for the PSL data.
+ * @property customRules A set of custom PSL rules.
  */
 data class RegistrabilityConfig(
     val enabled: Boolean,
     val source: DataSource,
+    val customRules: Set<String>,
 )
 
 /**
@@ -80,7 +82,10 @@ class RegistrabilityConfigBuilder {
                 }
         }
 
-    internal fun build() = RegistrabilityConfig(enabled, source)
+    /** A set of custom PSL rules. */
+    var customRules: Set<String> = emptySet()
+
+    internal fun build() = RegistrabilityConfig(enabled, source, customRules)
 }
 
 /**
@@ -468,7 +473,7 @@ class EmailVerifierDslBuilder {
     ) = if (config.enabled) {
         logger.debug("Creating RegistrabilityChecker...")
         val provider = createDomainsProvider(config.source, httpClient)
-        RegistrabilityChecker.create(provider)
+        RegistrabilityChecker.create(provider, config.customRules)
     } else {
         logger.debug("RegistrabilityChecker is disabled.")
         null

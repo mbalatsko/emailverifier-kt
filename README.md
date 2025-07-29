@@ -261,6 +261,14 @@ val verifier = emailVerifier {
         enabled = false
     }
 
+    registrability {
+        customRules = setOf(
+          "my-private-tld",       // Treat .my-private-tld as a public suffix
+          "*.my-private-domain",  // Treat all subdomains of .my-private-domain as public suffixes
+          "!example.my-private-domain" // Make an exception to the wildcard rule
+        )
+    }
+
     // Configure allow/deny lists for dataset checks
     disposability {
         allow = setOf("my-disposable-domain.com") // Whitelist a disposable domain

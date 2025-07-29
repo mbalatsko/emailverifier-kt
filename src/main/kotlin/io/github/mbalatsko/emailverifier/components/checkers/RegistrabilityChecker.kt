@@ -19,11 +19,14 @@ data class RegistrabilityData(
  * Check registrability of email hostname
  * Uses Public Suffix List (PSL) index for determining registrability of hostnames.
  *
- * Parses rules from a [DomainsProvider], typically using the PSL format from publicsuffix.org.
+ * Parses rules from a [domainsProvider], typically using the PSL format from publicsuffix.org.
  * Supports normal, wildcard (`*.`), and exception (`!`) rules per PSL specification.
+ *
+ * Also [customRules] could be specified to extend rules from [DomainsProvider]
  */
 class RegistrabilityChecker(
-    val domainsProvider: DomainsProvider,
+    private val domainsProvider: DomainsProvider,
+    private val customRules: Set<String> = emptySet(),
 ) : IChecker<RegistrabilityData, Unit>,
     Refreshable {
     /**
@@ -55,6 +58,13 @@ class RegistrabilityChecker(
         rules.forEach { addToNode(newRoot, it) }
         logger.debug("PSL index built with {} rules.", rules.size)
 
+        if (customRules.isNotEmpty()) {
+            logger.debug("Adding {} custom PSL rules.", customRules.size)
+            customRules.forEach {
+                addToNode(newRoot, it)
+            }
+        }
+
         mutex.withLock {
             root = newRoot
         }
@@ -71,6 +81,11 @@ class RegistrabilityChecker(
         node: Node,
         rule: String,
     ) {
+        if (!pslRuleRegex.matches(rule.trim())) {
+            logger.error("Ignoring invalid PSL rule: {}", rule)
+            return
+        }
+
         var exception = false
         var wildcard = false
         var ruleStr = rule.trim().lowercase()
@@ -158,6 +173,8 @@ class RegistrabilityChecker(
     companion object {
         private val logger = LoggerFactory.getLogger(RegistrabilityChecker::class.java)
 
+        private val pslRuleRegex = Regex("^(!)?(\\*\\.)?([a-zA-Z0-9-]+\\.)*[a-zA-Z0-9-]+$")
+
         /** Default URL to Mozilla-maintained Public Suffix List. */
         const val MOZILLA_PSL_URL = "https://publicsuffix.org/list/public_suffix_list.dat"
 
@@ -167,11 +184,15 @@ class RegistrabilityChecker(
          * Creates and initializes a [RegistrabilityChecker] using the given provider.
          *
          * @param domainsProvider source of PSL rules.
+         * @param customRules a set of custom PSL rules to add to the main list.
          * @return an initialized [RegistrabilityChecker].
          */
-        suspend fun create(domainsProvider: DomainsProvider): RegistrabilityChecker {
+        suspend fun create(
+            domainsProvider: DomainsProvider,
+            customRules: Set<String> = emptySet(),
+        ): RegistrabilityChecker {
             logger.debug("Creating RegistrabilityChecker...")
-            val index = RegistrabilityChecker(domainsProvider)
+            val index = RegistrabilityChecker(domainsProvider, customRules)
             index.refresh()
             logger.debug("RegistrabilityChecker created.")
             return index

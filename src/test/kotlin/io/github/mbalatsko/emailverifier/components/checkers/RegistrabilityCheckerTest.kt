@@ -115,4 +115,98 @@ class RegistrabilityCheckerTest {
                 registrabilityChecker.check(testEmail.copy(hostname = "sub.example.com.ac"), Unit).registrableDomain,
             )
         }
+
+    @Test
+    fun `check with custom rules`() =
+        runTest {
+            val initialRules = setOf("com")
+            val customRules = setOf("my-tld", "*.my-wildcard-tld", "!my-exception.my-wildcard-tld")
+
+            val registrabilityChecker =
+                RegistrabilityChecker.create(
+                    TestDomainsProvider(initialRules),
+                    customRules,
+                )
+
+            // Test initial rule
+            assertEquals(
+                "example.com",
+                registrabilityChecker.check(testEmail.copy(hostname = "example.com"), Unit).registrableDomain,
+            )
+
+            // Test custom simple TLD
+            assertEquals(
+                "example.my-tld",
+                registrabilityChecker.check(testEmail.copy(hostname = "example.my-tld"), Unit).registrableDomain,
+            )
+            assertNull(registrabilityChecker.check(testEmail.copy(hostname = "my-tld"), Unit).registrableDomain)
+
+            // Test custom wildcard TLD
+            assertNull(
+                registrabilityChecker.check(testEmail.copy(hostname = "a.my-wildcard-tld"), Unit).registrableDomain,
+            )
+            assertEquals(
+                "b.a.my-wildcard-tld",
+                registrabilityChecker.check(testEmail.copy(hostname = "b.a.my-wildcard-tld"), Unit).registrableDomain,
+            )
+
+            // Test custom exception rule
+            assertEquals(
+                "my-exception.my-wildcard-tld",
+                registrabilityChecker.check(testEmail.copy(hostname = "my-exception.my-wildcard-tld"), Unit).registrableDomain,
+            )
+        }
+
+    @Test
+    fun `check with invalid custom rules`() =
+        runTest {
+            val initialRules = setOf("com")
+            val customRules = setOf("my-tld", "invalid-rule-because-of-space ", "*.another-invalid-rule.")
+
+            val registrabilityChecker =
+                RegistrabilityChecker.create(
+                    TestDomainsProvider(initialRules),
+                    customRules,
+                )
+
+            // Test initial rule is still there
+            assertEquals(
+                "example.com",
+                registrabilityChecker.check(testEmail.copy(hostname = "example.com"), Unit).registrableDomain,
+            )
+
+            // Test valid custom rule is applied
+            assertEquals(
+                "example.my-tld",
+                registrabilityChecker.check(testEmail.copy(hostname = "example.my-tld"), Unit).registrableDomain,
+            )
+
+            // Test invalid rules are ignored
+            assertNull(
+                registrabilityChecker.check(testEmail.copy(hostname = "example.invalid-rule-because-of-space "), Unit).registrableDomain,
+            )
+            assertNull(
+                registrabilityChecker.check(testEmail.copy(hostname = "example.another-invalid-rule."), Unit).registrableDomain,
+            )
+        }
+
+    @Test
+    fun `custom rules override provider rules`() =
+        runTest {
+            // Provider says *.ck is a public suffix, but we add an exception.
+            val initialRules = setOf("*.ck")
+            val customRules = setOf("!pref.ck")
+
+            val registrabilityChecker =
+                RegistrabilityChecker.create(
+                    TestDomainsProvider(initialRules),
+                    customRules,
+                )
+
+            assertNull(registrabilityChecker.check(testEmail.copy(hostname = "foo.ck"), Unit).registrableDomain)
+            assertEquals(
+                "pref.ck",
+                registrabilityChecker.check(testEmail.copy(hostname = "pref.ck"), Unit).registrableDomain,
+            )
+        }
 }
