@@ -1,5 +1,6 @@
 # EmailVerifier 📬
 
+[![Kotlin Docs](https://img.shields.io/badge/docs-kotlin-blue?logo=kotlin)](https://mbalatsko.github.io/emailverifier-kt/)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.mbalatsko/emailverifier-kt.svg?label=Maven%20Central)](https://search.maven.org/artifact/io.github.mbalatsko/emailverifier-kt)
 [![GitHub Packages](https://img.shields.io/badge/github-packages-blue)](https://github.com/mbalatsko/emailverifier-kt/packages)
 [![License: MIT](https://img.shields.io/github/license/mbalatsko/emailverifier-kt)](https://github.com/mbalatsko/emailverifier-kt/blob/main/LICENSE)
