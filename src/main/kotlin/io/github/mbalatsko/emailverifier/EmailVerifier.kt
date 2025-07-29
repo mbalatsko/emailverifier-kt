@@ -87,84 +87,85 @@ class EmailVerifier(
      * @param email the input email address to validate.
      * @return a structured [EmailValidationResult] with results for each check.
      */
-    suspend fun verify(email: String): EmailValidationResult {
-        logger.info("Starting verification for email: {}", email)
-        val result =
-            coroutineScope {
-                val emailParts =
-                    try {
-                        parseEmailParts(email)
-                    } catch (e: IllegalArgumentException) {
-                        logger.warn("Failed to parse email: {}. Reason: {}", email, e.message)
-                        val syntaxData = SyntaxValidationData(username = false, plusTag = false, hostname = false)
-                        return@coroutineScope EmailValidationResult(
-                            email = email,
-                            emailParts = EmailParts("", "", ""),
-                            syntax = CheckResult.Failed(syntaxData),
-                        )
-                    }
-                logger.debug("Parsed email parts: {}", emailParts)
+    suspend fun verify(email: String): EmailValidationResult =
+        coroutineScope {
+            logger.info("Starting verification for email: {}", email)
 
-                val syntaxData = emailSyntaxChecker.check(emailParts, Unit)
-                val syntaxCheck =
-                    if (syntaxData.run { username && plusTag && hostname }) {
-                        CheckResult.Passed(syntaxData)
-                    } else {
-                        CheckResult.Failed(syntaxData)
-                    }
-                logger.debug("Syntax check result: {}", syntaxCheck)
+            val emailParts =
+                try {
+                    parseEmailParts(email)
+                } catch (e: IllegalArgumentException) {
+                    logger.warn("Failed to parse email: {}. Reason: {}", email, e.message)
+                    val syntaxData = SyntaxValidationData(username = false, plusTag = false, hostname = false)
+                    return@coroutineScope EmailValidationResult(
+                        email = email,
+                        emailParts = EmailParts("", "", ""),
+                        syntax = CheckResult.Failed(syntaxData),
+                    )
+                }
+            logger.debug("Parsed email parts: {}", emailParts)
 
-                val registrabilityCheck =
-                    async {
-                        runCheck(registrabilityChecker, emailParts, syntaxData.hostname) {
-                            it.registrableDomain != null
-                        }
-                    }
-                val disposabilityCheck =
-                    async {
-                        runCheck(disposableEmailChecker, emailParts, syntaxData.hostname) {
-                            !it.match
-                        }
-                    }
-                val freeCheck =
-                    async {
-                        runCheck(freeChecker, emailParts, syntaxData.hostname) {
-                            !it.match
-                        }
-                    }
-                val roleBasedUsernameCheck =
-                    async {
-                        runCheck(roleBasedUsernameChecker, emailParts, syntaxData.username) {
-                            !it.match
-                        }
-                    }
-                val mxRecordCheck =
-                    async {
-                        runCheck(mxRecordChecker, emailParts, syntaxData.hostname) {
-                            it.records.isNotEmpty()
-                        }
-                    }
-                val gravatarCheck =
-                    async {
-                        runCheck(gravatarChecker, emailParts, syntaxData.username && syntaxData.hostname) {
-                            it.gravatarUrl != null
-                        }
-                    }
+            val syntaxData = emailSyntaxChecker.check(emailParts, Unit)
+            val syntaxCheck =
+                if (syntaxData.run { username && plusTag && hostname }) {
+                    CheckResult.Passed(syntaxData)
+                } else {
+                    CheckResult.Failed(syntaxData)
+                }
+            logger.debug("Syntax check result: {}", syntaxCheck)
 
-                val mxResult = mxRecordCheck.await()
-                logger.debug("MX check result: {}", mxResult)
-                val smtpCheck =
-                    async {
-                        runCheck(
-                            smtpChecker,
-                            emailParts,
-                            (mxResult as? CheckResult.Passed)?.data?.records ?: emptyList(),
-                            syntaxData.username && syntaxData.hostname && mxResult is CheckResult.Passed,
-                        ) {
-                            it.isDeliverable
-                        }
+            val registrabilityCheck =
+                async {
+                    runCheck(registrabilityChecker, emailParts, syntaxData.hostname) {
+                        it.registrableDomain != null
                     }
+                }
+            val disposabilityCheck =
+                async {
+                    runCheck(disposableEmailChecker, emailParts, syntaxData.hostname) {
+                        !it.match
+                    }
+                }
+            val freeCheck =
+                async {
+                    runCheck(freeChecker, emailParts, syntaxData.hostname) {
+                        !it.match
+                    }
+                }
+            val roleBasedUsernameCheck =
+                async {
+                    runCheck(roleBasedUsernameChecker, emailParts, syntaxData.username) {
+                        !it.match
+                    }
+                }
+            val mxRecordCheck =
+                async {
+                    runCheck(mxRecordChecker, emailParts, syntaxData.hostname) {
+                        it.records.isNotEmpty()
+                    }
+                }
+            val gravatarCheck =
+                async {
+                    runCheck(gravatarChecker, emailParts, syntaxData.username && syntaxData.hostname) {
+                        it.gravatarUrl != null
+                    }
+                }
 
+            val mxResult = mxRecordCheck.await()
+            logger.debug("MX check result: {}", mxResult)
+            val smtpCheck =
+                async {
+                    runCheck(
+                        smtpChecker,
+                        emailParts,
+                        (mxResult as? CheckResult.Passed)?.data?.records ?: emptyList(),
+                        syntaxData.username && syntaxData.hostname && mxResult is CheckResult.Passed,
+                    ) {
+                        it.isDeliverable
+                    }
+                }
+
+            val result =
                 EmailValidationResult(
                     email = email,
                     emailParts = emailParts,
@@ -177,10 +178,62 @@ class EmailVerifier(
                     roleBasedUsername = roleBasedUsernameCheck.await().also { logger.debug("Role-based username check result: {}", it) },
                     smtp = smtpCheck.await().also { logger.debug("SMTP check result: {}", it) },
                 )
-            }
-        logger.info("Verification finished for email: {}. Result: {}", email, result)
-        return result
+            logger.info("Verification finished for email: {}. Result: {}", email, result)
+            return@coroutineScope result
+        }
+
+    /**
+     * Triggers a refresh of the Public Suffix List (PSL) data.
+     * This is useful for long-running applications that need to keep their data up-to-date.
+     * The data is fetched from the source specified in the configuration.
+     * This operation is thread-safe.
+     */
+    suspend fun updateRegistrabilityCheckerData() {
+        registrabilityChecker?.refresh()
     }
+
+    /**
+     * Triggers a refresh of the disposable email domains data.
+     * This is useful for long-running applications that need to keep their data up-to-date.
+     * The data is fetched from the source specified in the configuration.
+     * This operation is thread-safe.
+     */
+    suspend fun updateDisposableCheckerData() {
+        disposableEmailChecker?.refresh()
+    }
+
+    /**
+     * Triggers a refresh of the free email provider domains data.
+     * This is useful for long-running applications that need to keep their data up-to-date.
+     * The data is fetched from the source specified in the configuration.
+     * This operation is thread-safe.
+     */
+    suspend fun updateFreeCheckerData() {
+        freeChecker?.refresh()
+    }
+
+    /**
+     * Triggers a refresh of the role-based usernames data.
+     * This is useful for long-running applications that need to keep their data up-to-date.
+     * The data is fetched from the source specified in the configuration.
+     * This operation is thread-safe.
+     */
+    suspend fun updateRoleBasedUsernameCheckerData() {
+        roleBasedUsernameChecker?.refresh()
+    }
+
+    /**
+     * Triggers a refresh of all data sources that support it.
+     * This is a convenience method that calls all the individual `update*` methods in parallel.
+     * This operation is thread-safe.
+     */
+    suspend fun updateAllData() =
+        coroutineScope {
+            async { updateRegistrabilityCheckerData() }
+            async { updateDisposableCheckerData() }
+            async { updateFreeCheckerData() }
+            async { updateRoleBasedUsernameCheckerData() }
+        }
 
     private suspend fun <T, C> runCheck(
         checker: IChecker<T, C>?,

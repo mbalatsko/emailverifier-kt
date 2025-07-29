@@ -398,7 +398,31 @@ The `emailVerifier {}` call performs several network requests to download the ne
 To avoid re-downloading this data every time you want to verify an email, it is highly recommended to **create a single
 instance of the `EmailVerifier` and reuse it throughout the lifecycle of your application**.
 
-## 7. Logging
+### 7. Dynamic Data Reloading
+
+For long-running applications, it's often necessary to refresh the data used by the verifier without restarting the application.
+`EmailVerifier` provides a set of `suspend` functions to reload the data for the checks that use external datasets.
+
+These functions are thread-safe and will fetch the latest data from the configured `DataSource` (remote, file, or resource).
+
+```kotlin
+val verifier = emailVerifier {
+    // Your configuration...
+}
+
+// Refresh the Public Suffix List data
+verifier.updateRegistrabilityCheckerData()
+
+// Refresh the disposable email domains data
+verifier.updateDisposableCheckerData()
+
+// Refresh all data sources in parallel
+verifier.updateAllData()
+```
+
+This is particularly useful if you want to keep your disposable email lists or other datasets up-to-date by periodically calling these methods.
+
+## 8. Logging
 
 `EmailVerifier` uses the [SLF4J](https://www.slf4j.org/) logging facade. This allows you, as a user of the library, to choose your own logging framework (e.g., [Logback](http://logback.qos.ch/), [Log4j 2](https://logging.apache.org/log4j/2.x/), `slf4j-simple`). The library itself only includes the `slf4j-api` dependency, so it does not force a specific logging implementation on your application.
 
