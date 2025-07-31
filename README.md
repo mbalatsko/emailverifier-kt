@@ -1,4 +1,4 @@
-# EmailVerifier 📬
+# emailverifier-kt 📬
 
 [![Kotlin Docs](https://img.shields.io/badge/docs-kotlin-blue?logo=kotlin)](https://mbalatsko.github.io/emailverifier-kt/)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.mbalatsko/emailverifier-kt.svg?label=Maven%20Central)](https://search.maven.org/artifact/io.github.mbalatsko/emailverifier-kt)
@@ -9,18 +9,18 @@
 [![Platform](https://img.shields.io/badge/platform-jvm-blue)](#)
 
 
-**EmailVerifier** is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax. It's built with a clear focus: help developers **reliably assess whether a given email is real, meaningful, and worth accepting**.
+**emailverifier-kt** is a composable, pluggable Kotlin library for validating email addresses beyond just their syntax. It's built with a clear focus: help developers **reliably assess whether a given email is real, meaningful, and worth accepting**.
 
 ## ⚡️ Performance
 
-EmailVerifier is designed for high performance and uses Kotlin's coroutines to parallelize I/O operations:
+`emailverifier-kt` is designed for high performance and uses Kotlin's coroutines to parallelize I/O operations:
 
 - **Parallel Initialization:** All external data sources (e.g., Public Suffix List, disposable domains) are downloaded concurrently during setup, making initialization significantly faster.
 - **Parallel Verification:** Independent network checks (MX records, Gravatar) are executed concurrently for each email, reducing the verification time.
 
 ## ✅ Features
 
-EmailVerifier performs a layered set of validations:
+`emailverifier-kt` performs a layered set of validations:
 
 ### 1. **Syntax Validation**
 Checks the structure of the email:
@@ -433,7 +433,7 @@ This is particularly useful if you want to keep your disposable email lists or o
 
 ## 8. Logging
 
-`EmailVerifier` uses the [SLF4J](https://www.slf4j.org/) logging facade. This allows you, as a user of the library, to choose your own logging framework (e.g., [Logback](http://logback.qos.ch/), [Log4j 2](https://logging.apache.org/log4j/2.x/), `slf4j-simple`). The library itself only includes the `slf4j-api` dependency, so it does not force a specific logging implementation on your application.
+`emailverifier-kt` uses the [SLF4J](https://www.slf4j.org/) logging facade. This allows you, as a user of the library, to choose your own logging framework (e.g., [Logback](http://logback.qos.ch/), [Log4j 2](https://logging.apache.org/log4j/2.x/), `slf4j-simple`). The library itself only includes the `slf4j-api` dependency, so it does not force a specific logging implementation on your application.
 
 By default, no logs will be produced unless you add a logging implementation to your project's dependencies.
 
